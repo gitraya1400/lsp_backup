@@ -190,7 +190,9 @@ function CalendarDayButton({
       ref={ref}
       variant="ghost"
       size="icon"
-      data-day={day.date.toLocaleDateString()}
+      // --- INI PERBAIKANNYA ---
+      data-day={day.date.toLocaleDateString('en-US')}
+      // --- BATAS PERBAIKAN ---
       data-selected-single={
         modifiers.selected &&
         !modifiers.range_start &&

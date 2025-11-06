@@ -1,124 +1,186 @@
 "use client"
 
-import React, { useState } from "react"
+import { useEffect, useState } from "react"
 import { useRouter } from "next/navigation"
 import { useAuth } from "@/lib/auth-context"
 import { MainLayout } from "@/components/layout/main-layout"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
-import { Alert, AlertDescription } from "@/components/ui/alert"
-import { AlertCircle, Upload } from "lucide-react"
+import { Input } from "@/components/ui/input"
+import { Label } from "@/components/ui/label"
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
+import { Skeleton } from "@/components/ui/skeleton"
+import { Spinner } from "@/components/ui/spinner"
+import { FileUp, Check, AlertCircle, Loader2 } from "lucide-react"
 
-export default function PraktikumUploadPage() {
+import { 
+  mockGetProgressAsesi, 
+  mockSubmitPraktikum // Ganti dari mockSubmitUjianTeori
+} from "@/lib/api-mock"
+
+export default function UploadPraktikumPage() {
+  const { user, loading: isAuthLoading } = useAuth() // Ambil isAuthLoading
   const router = useRouter()
-  const { user } = useAuth() // Ambil data user
-
+  
+  const [progress, setProgress] = useState(null)
+  const [loading, setLoading] = useState(true) // Loading untuk cek prasyarat
   const [file, setFile] = useState(null)
-  const [uploading, setUploading] = useState(false)
+  const [isUploading, setIsUploading] = useState(false)
+  const [error, setError] = useState(null)
 
-  const handleFileSelect = (e) => {
-    const selectedFile = e.target.files?.[0]
+  useEffect(() => {
+    
+    // 1. Tunggu auth pulih
+    if (isAuthLoading) {
+      return; 
+    }
+    // 2. Jika tidak ada user, tendang
+    if (!user) {
+      router.push("/login");
+      return;
+    }
+    
+    // 3. Jika user ada, cek prasyarat
+    const checkPrerequisites = async () => {
+      try {
+        setLoading(true)
+        const progressData = await mockGetProgressAsesi(user.id)
+        setProgress(progressData)
+
+        if (!progressData.tryoutSelesai) {
+          alert("Anda harus menyelesaikan tryout terlebih dahulu sebelum mengunggah praktikum.")
+          router.push("/asesi/exams")
+          return
+        }
+
+        // Cek jika sudah pernah upload
+        if (progressData.ujianPraktikumSelesai) {
+          alert("Anda sudah pernah mengunggah file praktikum.")
+          router.push("/asesi/exams")
+          return
+        }
+
+      } catch (err) {
+        console.error(err)
+        setError("Gagal memuat status progres Anda.")
+      } finally {
+        setLoading(false)
+      }
+    }
+
+    checkPrerequisites()
+    
+  }, [user, isAuthLoading, router])
+  // --- (BATAS PERBAIKAN 2) ---
+
+  const handleFileChange = (e) => {
+    const selectedFile = e.target.files[0]
     if (selectedFile) {
-      setFile(selectedFile)
+      // Validasi simpel untuk file .ppt atau .pptx
+      const fileType = selectedFile.type
+      if (fileType === "application/vnd.ms-powerpoint" || fileType === "application/vnd.openxmlformats-officedocument.presentationml.presentation") {
+        setFile(selectedFile)
+        setError(null)
+      } else {
+        setFile(null)
+        setError("File harus berekstensi .ppt atau .pptx")
+      }
     }
   }
 
-  const handleUpload = async () => {
-    if (!file) return
+  const handleSubmit = async (e) => {
+    e.preventDefault()
+    if (!file) {
+      setError("Silakan pilih file terlebih dahulu.")
+      return
+    }
+    if (!user) {
+      setError("Sesi Anda berakhir. Silakan login kembali.");
+      return;
+    }
+
+    setIsUploading(true)
+    setError(null)
 
     try {
-      setUploading(true)
-      // Simulasi upload
-      console.log("[Mock] Uploading file:", file.name, "for user:", user.id)
-      await new Promise((resolve) => setTimeout(resolve, 2000))
-      alert("File berhasil diunggah!")
-      router.push("/asesi/exams") 
-    } catch (error) {
-      console.error("Upload error:", error)
-      alert("Gagal mengunggah file")
+      await mockSubmitPraktikum(user.id, file.name)
+
+      alert("File praktikum Anda berhasil diunggah!")
+      router.push("/asesi/exams") // Kembali ke hub ujian
+
+    } catch (err) {
+      console.error("Gagal mengunggah file:", err)
+      setError("Terjadi kesalahan saat mengunggah file. Silakan coba lagi.")
     } finally {
-      setUploading(false)
+      setIsUploading(false)
     }
+  }
+
+  // Tampilkan skeleton jika auth atau data sedang loading
+  if (loading || isAuthLoading) {
+    return (
+      <MainLayout>
+        <div className="p-6 space-y-4">
+          <Skeleton className="h-10 w-1/3" />
+          <Skeleton className="h-64 w-full" />
+        </div>
+      </MainLayout>
+    )
   }
 
   return (
     <MainLayout>
-      <div className="p-6 space-y-6 max-w-2xl mx-auto">
-        <div>
-          <h1 className="text-3xl font-bold">Unggah Jawaban Ujian Praktikum</h1>
-          <p className="text-muted-foreground mt-1">Skema: {user?.skemaId}</p>
-        </div>
-
-        <Card>
+      <div className="p-6">
+        <Card className="max-w-2xl mx-auto">
           <CardHeader>
-            <CardTitle>Panduan Pengumpulan</CardTitle>
+            <CardTitle>Unggah Hasil Ujian Praktikum</CardTitle>
+            <CardDescription>
+              Unggah file presentasi (.ppt atau .pptx) hasil analisis studi kasus Anda. 
+              File ini akan digunakan untuk sesi Unjuk Diri.
+            </CardDescription>
           </CardHeader>
-          <CardContent className="space-y-4 text-sm">
-            <div>
-              <h4 className="font-medium mb-2">Format File yang Diterima:</h4>
-              <ul className="list-disc list-inside space-y-1 text-muted-foreground">
-                <li>Presentasi (.pptx) - **Direkomendasikan**</li>
-                <li>PDF (.pdf)</li>
-              </ul>
-            </div>
-            <div>
-              <h4 className="font-medium mb-2">Ukuran File Maksimal:</h4>
-              <p className="text-muted-foreground">50 MB</p>
-            </div>
-          </CardContent>
-        </Card>
-
-        <Alert>
-          <AlertCircle className="h-4 w-4" />
-          <AlertDescription>
-            Pastikan file yang Anda unggah sudah final. Anda hanya dapat mengunggah **satu file** untuk
-            seluruh ujian praktikum.
-          </AlertDescription>
-        </Alert>
-
-        <Card>
-          <CardContent className="pt-6">
-            <div className="space-y-4">
-              <div className="border-2 border-dashed rounded-lg p-8 text-center">
-                <Upload className="w-12 h-12 text-muted-foreground mx-auto mb-3" />
-                <label htmlFor="file-input" className="cursor-pointer">
-                  <p className="font-medium">Pilih file atau tarik ke sini</p>
-                  <p className="text-sm text-muted-foreground">{file ? file.name : "Hanya file .ppt atau .pdf (Maks 50MB)"}</p>
-                </label>
-                <input
-                  id="file-input"
-                  type="file"
-                  onChange={handleFileSelect}
-                  className="hidden"
-                  accept=".pdf,.pptx"
+          <CardContent>
+            <form onSubmit={handleSubmit} className="space-y-6">
+              <div className="space-y-2">
+                <Label htmlFor="file-upload">Pilih File (.ppt / .pptx)</Label>
+                <Input 
+                  id="file-upload" 
+                  type="file" 
+                  onChange={handleFileChange}
+                  accept=".ppt, .pptx, application/vnd.ms-powerpoint, application/vnd.openxmlformats-officedocument.presentationml.presentation"
+                  disabled={isUploading}
                 />
               </div>
 
               {file && (
-                <div className="p-3 bg-green-50 border border-green-200 rounded-lg">
-                  <p className="text-sm text-green-800">
-                    <span className="font-medium">File dipilih:</span> {file.name} ({Math.round(file.size / 1024)} KB)
-                  </p>
+                <div className="flex items-center gap-2 text-sm text-green-700 p-3 bg-green-50 rounded-md">
+                  <Check className="w-4 h-4" />
+                  File siap diunggah: <span className="font-medium">{file.name}</span>
                 </div>
               )}
 
-              <div className="flex gap-3">
-                <Button
-                  variant="outline"
-                  onClick={() => {
-                    setFile(null)
-                    const input = document.getElementById("file-input")
-                    if (input) input.value = ""
-                  }}
-                  disabled={!file}
-                >
-                  Hapus File
-                </Button>
-                <Button onClick={handleUpload} disabled={!file || uploading} className="flex-1">
-                  {uploading ? "Mengunggah..." : "Unggah dan Selesaikan"}
-                </Button>
-              </div>
-            </div>
+              {error && (
+                <Alert variant="destructive">
+                  <AlertCircle className="h-4 w-4" />
+                  <AlertTitle>Error</AlertTitle>
+                  <AlertDescription>{error}</AlertDescription>
+                </Alert>
+              )}
+
+              <Button type="submit" className="w-full" disabled={isUploading || !file}>
+                {isUploading ? (
+                  <>
+                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                    Mengunggah...
+                  </>
+                ) : (
+                  <>
+                    <FileUp className="w-4 h-4 mr-2" />
+                    Unggah dan Selesaikan
+                  </>
+                )}
+              </Button>
+            </form>
           </CardContent>
         </Card>
       </div>

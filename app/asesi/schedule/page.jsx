@@ -2,213 +2,186 @@
 
 import { useEffect, useState } from "react"
 import { MainLayout } from "@/components/layout/main-layout"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { Calendar } from "@/components/ui/calendar"
-import { mockGetLinimasa, mockGetPlottingAsesi } from "@/lib/api-mock"
 import { useAuth } from "@/lib/auth-context"
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+import { Calendar } from "@/components/ui/calendar"
 import { Skeleton } from "@/components/ui/skeleton"
-import { Clock, Link as LinkIcon, MapPin, Video, Calendar as CalendarIcon } from "lucide-react" // <-- Import Ikon Kalender
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
+import { Calendar as CalendarIcon, Clock, Video, Info, UserCheck, AlertCircle } from "lucide-react"
 import { Button } from "@/components/ui/button"
 
+import { mockGetLinimasa, mockGetPlottingAsesi } from "@/lib/api-mock"
+import { useRouter } from "next/navigation"
+
+// Helper Card untuk menampilkan event
+const EventCard = ({ event }) => {
+  let Icon = Info
+  let colors = "bg-blue-50 border-blue-200 text-blue-800"
+
+  if (event.type === "announcement") {
+    Icon = Info
+    colors = "bg-yellow-50 border-yellow-200 text-yellow-800"
+  } else if (event.type === "event") {
+    Icon = Video
+    colors = "bg-blue-50 border-blue-200 text-blue-800"
+  } else if (event.type === "exam") {
+    Icon = UserCheck // Ikon baru untuk ujian
+    colors = "bg-purple-50 border-purple-200 text-purple-800" // Warna baru
+  }
+
+  return (
+    <div className={`p-4 rounded-lg border ${colors} flex items-start gap-4`}>
+      <Icon className="w-5 h-5 mt-1 flex-shrink-0" />
+      <div className="flex-1">
+        <h4 className="font-semibold">{event.title}</h4>
+        <p className="text-sm">{event.description}</p>
+        <div className="flex items-center gap-4 mt-2 text-sm">
+          <span className="flex items-center gap-1.5">
+            <Clock className="w-3.5 h-3.5" />
+            {event.time}
+          </span>
+          {event.url && (
+            <Button size="sm" variant="link" asChild className="p-0 h-auto">
+              <a href={event.url} target="_blank" rel="noopener noreferrer">Link Zoom</a>
+            </Button>
+          )}
+        </div>
+      </div>
+    </div>
+  )
+}
+
+
 export default function SchedulePage() {
-  const { user } = useAuth()
-  const [allEvents, setAllEvents] = useState([])
+  const { user, loading: isAuthLoading } = useAuth() // Ambil isAuthLoading
+  const router = useRouter() // Panggil useRouter
+  const [date, setDate] = useState(new Date())
+  const [events, setEvents] = useState([])
   const [loading, setLoading] = useState(true)
-  const [selectedDate, setSelectedDate] = useState(new Date())
+  const [error, setError] = useState(null)
+  
+  const [eventDates, setEventDates] = useState([])
 
   useEffect(() => {
-    if (user) {
-      loadData()
+    if (isAuthLoading) {
+      return; // Tunggu auth pulih
     }
-  }, [user])
+    if (!user) {
+      router.push("/login"); // Jika tidak ada user, tendang
+      return;
+    }
+    // Jika user ada, baru muat data
+    loadEvents();
+  }, [user, isAuthLoading, router]) // Update dependensi
 
-  const loadData = async () => {
+  const loadEvents = async () => {
+    if (!user) return;
     try {
       setLoading(true)
-      const skemaId = user?.skemaId || "ADS"
+      setError(null)
       
+      // 1. Panggil kedua API secara paralel
       const [linimasaData, plottingData] = await Promise.all([
-        mockGetLinimasa(skemaId),
-        mockGetPlottingAsesi(user.id)
-      ])
+        mockGetLinimasa(user.skemaId),
+        mockGetPlottingAsesi(user.id) // <-- API JADWAL UJIAN
+      ]);
+
+      // 2. Format data linimasa (Sosialisasi, dll)
+      const formattedLinimasa = linimasaData.map(item => ({
+        id: item.id,
+        date: new Date(item.tanggal).toDateString(),
+        title: `[${item.tipe}] ${item.judul}`,
+        time: item.waktu || "Seharian",
+        description: item.deskripsi,
+        url: item.urlZoom,
+        type: item.tipe === "PENGUMUMAN" ? "announcement" : "event"
+      }));
+
+      // 3. Format data plotting (Jadwal Ujian PRIBADI)
+      const formattedPlotting = plottingData.map(item => ({
+        id: item.id,
+        date: new Date(item.tanggal).toDateString(),
+        title: `[UJIAN OFFLINE] ${item.tipeUjian === "TEORI" ? "Ujian Teori" : "Unjuk Diri"}`,
+        time: item.waktu || "Waktu Menyusul",
+        description: `Lokasi: ${item.ruangan}`,
+        url: null, // Ujian offline tidak ada link zoom
+        type: "exam" // Tipe baru untuk styling
+      }));
+
+      // 4. Gabungkan keduanya
+      const allEvents = [...formattedLinimasa, ...formattedPlotting];
       
-      const normalizedLinimasa = linimasaData.map(item => ({
-        id: `lin-${item.id}`,
-        judul: item.judul,
-        deskripsi: item.deskripsi,
-        tanggal: new Date(item.tanggal),
-        waktu: item.waktu,
-        tipe: item.tipe,
-        urlZoom: item.urlZoom,
-      }))
+      // 5. Ambil tanggalnya saja untuk "titik" kalender
+      const datesWithEvents = allEvents.map(event => new Date(event.date));
+      setEventDates(datesWithEvents);
       
-      const normalizedPlotting = plottingData.map(item => ({
-        id: `plot-${item.id}`,
-        judul: `Ujian Offline: ${item.tipeUjian}`,
-        deskripsi: `Lokasi: ${item.ruangan}`,
-        tanggal: new Date(item.tanggal),
-        waktu: item.waktu,
-        tipe: "SESI_OFFLINE",
-        ruangan: item.ruangan,
-      }))
-      
-      setAllEvents([...normalizedLinimasa, ...normalizedPlotting])
-      
-    } catch (error) {
-      console.error("Error loading schedule data:", error)
+      setEvents(allEvents);
+
+    } catch (err) {
+      console.error("Error loading events:", err)
+      setError("Gagal memuat jadwal Anda.")
     } finally {
       setLoading(false)
     }
   }
-  
-  const filteredEvents = selectedDate
-    ? allEvents.filter((event) => event.tanggal.toDateString() === selectedDate.toDateString())
-    : []
 
-  // --- (INI KOMPONEN BARU BUAT ITEM KEGIATAN) ---
-  const EventItem = ({ event }) => {
-    let icon = <Clock className="w-4 h-4 text-gray-500" />
-    let badgeColor = "bg-gray-100 text-gray-800"
-    
-    if (event.tipe === "PEMBELAJARAN") {
-      icon = <Video className="w-4 h-4 text-blue-600" />
-      badgeColor = "bg-blue-100 text-blue-800"
-    } else if (event.tipe === "SESI_OFFLINE") {
-      icon = <MapPin className="w-4 h-4 text-purple-600" />
-      badgeColor = "bg-purple-100 text-purple-800"
-    } else if (event.tipe === "PENGUMUMAN") {
-      badgeColor = "bg-yellow-100 text-yellow-800"
-    }
-
-    return (
-      <div className="border rounded-lg p-4 hover:bg-muted/50 transition-colors">
-        <div className="flex items-start gap-4">
-          <div className="flex-shrink-0 mt-1">
-             <div className={`w-8 h-8 rounded-lg ${badgeColor} flex items-center justify-center`}>
-                {icon}
-             </div>
-          </div>
-          <div className="flex-1">
-            <h4 className="font-medium">{event.judul}</h4>
-            <p className="text-sm text-muted-foreground mt-1">{event.deskripsi}</p>
-
-            <div className="flex flex-wrap gap-x-4 gap-y-2 mt-3 text-xs text-muted-foreground">
-              {event.waktu && (
-                <div className="flex items-center gap-1">
-                  <Clock className="w-4 h-4" />
-                  {event.waktu}
-                </div>
-              )}
-              <div className="flex items-center gap-1">
-                <span className={`px-2 py-0.5 rounded ${badgeColor} text-xs font-medium`}>
-                  {event.tipe.replace("_", " ")}
-                </span>
-              </div>
-            </div>
-
-            {event.urlZoom && (
-              <div className="mt-4">
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => window.open(event.urlZoom, "_blank")}
-                >
-                  <LinkIcon className="w-4 h-4 mr-2" />
-                  Masuk Zoom
-                </Button>
-              </div>
-            )}
-          </div>
-        </div>
-      </div>
-    )
-  }
-  // --- (BATAS KOMPONEN BARU) ---
+  const selectedDateStr = date ? date.toDateString() : new Date().toDateString()
+  const selectedEvents = events.filter(event => event.date === selectedDateStr)
 
   return (
     <MainLayout>
       <div className="p-6 space-y-6">
-        
-        {/* --- (INI DIA PERBAIKANNYA) --- */}
-        
-        {/* 1. Banner Biru Sesuai Figma */}
-        <div className="w-full bg-blue-700 text-white rounded-lg p-8 flex items-center gap-4">
-            <CalendarIcon className="w-10 h-10 text-blue-300 flex-shrink-0" />
-            <div>
-                <h1 className="text-3xl font-bold">Linimasa Kegiatan</h1>
-                <p className="text-blue-200 mt-1">Jadwal seluruh kegiatan pembelajaran, ujian, dan kegiatan penting lainnya.</p>
-            </div>
+        <div>
+          <h1 className="text-3xl font-bold">Jadwal Saya</h1>
+          <p className="text-muted-foreground mt-1">
+            Lihat jadwal sosialisasi, pengumuman, dan jadwal ujian offline Anda.
+          </p>
         </div>
 
-        {/* 2. Layout diubah jadi 1 kolom (Vertikal) */}
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          
-          {/* Kolom Kiri: Kalender */}
-          <div className="lg:col-span-2">
-            <Card>
-              <CardHeader>
-                <CardTitle>Kalender Kegiatan</CardTitle>
-              </CardHeader>
-              <CardContent>
-                {loading ? (
-                  <Skeleton className="h-[290px] w-full" />
-                ) : (
-                  <Calendar
-                    mode="single"
-                    selected={selectedDate}
-                    onSelect={setSelectedDate}
-                    className="p-0 w-full" // <-- Dibuat full width
-                    classNames={{
-                        month: "w-full",
-                        table: "w-full",
-                        head_row: "flex w-full",
-                        head_cell: "flex-1",
-                        row: "flex w-full mt-2",
-                        cell: "flex-1",
-                        day: "w-full h-12", // <-- Bikin selnya gede
-                    }}
-                    modifiers={{
-                        hasEvent: allEvents.map(e => e.tanggal)
-                    }}
-                    modifiersStyles={{
-                        hasEvent: { fontWeight: 'bold', textDecoration: 'underline' }
-                    }}
-                  />
-                )}
-              </CardContent>
-            </Card>
-          </div>
+        {error && (
+          <Alert variant="destructive">
+            <AlertCircle className="h-4 w-4" />
+            <AlertTitle>Gagal Memuat Data</AlertTitle>
+            <AlertDescription>{error}</AlertDescription>
+          </Alert>
+        )}
 
-          {/* Kolom Kanan: Detail Kegiatan (Sesuai Tanggal) */}
-          <div className="lg:col-span-1 space-y-4">
-            <Card className="lg:sticky lg:top-6"> {/* <-- Bikin sticky biar ngikut pas scroll */}
-              <CardHeader>
-                <CardTitle>
-                  {selectedDate ? new Date(selectedDate).toLocaleDateString("id-ID", {
-                    weekday: 'long',
-                    day: 'numeric',
-                    month: 'long',
-                  }) : "Pilih Tanggal"}
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                {loading ? (
-                  <Skeleton className="h-24 w-full" />
-                ) : filteredEvents.length === 0 ? (
-                  <p className="text-center text-muted-foreground py-8">Tidak ada kegiatan pada tanggal ini</p>
-                ) : (
-                  <div className="space-y-3">
-                    {filteredEvents.map((event) => (
-                      <EventItem key={event.id} event={event} />
-                    ))}
-                  </div>
-                )}
-              </CardContent>
-            </Card>
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+          <Card className="md:col-span-1 h-fit">
+            <CardContent className="p-2">
+              <Calendar
+                mode="single"
+                selected={date}
+                onSelect={setDate}
+                className="w-full"
+                
+                modifiers={{ hasEvent: eventDates }}
+                modifiersClassNames={{ hasEvent: 'has-event-dot' }}
+              />
+            </CardContent>
+          </Card>
+
+          <div className="md:col-span-2 space-y-4">
+            <h2 className="text-xl font-semibold">
+              Kegiatan pada {new Date(selectedDateStr).toLocaleDateString("id-ID", { weekday: 'long', day: 'numeric', month: 'long' })}
+            </h2>
+            {loading ? (
+              <div className="space-y-4">
+                <Skeleton className="h-24 w-full" />
+                <Skeleton className="h-24 w-full" />
+              </div>
+            ) : selectedEvents.length === 0 ? (
+              <Alert>
+                <CalendarIcon className="h-4 w-4" />
+                <AlertDescription>Tidak ada kegiatan yang dijadwalkan pada tanggal ini.</AlertDescription>
+              </Alert>
+            ) : (
+              selectedEvents.map((event) => (
+                <EventCard key={event.id} event={event} />
+              ))
+            )}
           </div>
         </div>
-        {/* --- (BATAS PERBAIKAN) --- */}
-        
       </div>
     </MainLayout>
   )

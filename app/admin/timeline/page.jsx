@@ -1,575 +1,308 @@
-"use client";
+"use client"
 
-import { useEffect, useState } from "react";
-import { MainLayout } from "@/components/layout/main-layout";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Alert, AlertDescription } from "@/components/ui/alert";
-// --- (IMPORT FUNGSI BARU) ---
-import { 
-  mockGetLinimasa, 
-  mockGetSesiUjianOffline, 
-  mockCreateSesiUjianOffline,
-  mockGetAllSkema // <-- IMPORT FUNGSI BARU
-} from "@/lib/api-mock";
-import { Skeleton } from "@/components/ui/skeleton";
-import { Plus, Edit2, Trash2, Calendar, Clock, MapPin, Users, Video } from "lucide-react";
-import { Spinner } from "@/components/ui/spinner"; // <-- Import Spinner
+import { useEffect, useState } from "react"
+import { MainLayout } from "@/components/layout/main-layout"
+import { useAuth } from "@/lib/auth-context"
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+import { Button } from "@/components/ui/button"
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
+import { Calendar as CalendarIcon, PlusCircle, AlertCircle, Clock, Users, Home as HomeIcon } from "lucide-react"
+import { Calendar } from "@/components/ui/calendar"
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog"
+import { Input } from "@/components/ui/input"
+import { Label } from "@/components/ui/label"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { mockGetSesiUjianOffline, mockCreateSesiUjianOffline, mockGetAllSkema } from "@/lib/api-mock"
+import { Skeleton } from "@/components/ui/skeleton"
+import { useRouter } from "next/navigation"
+
+function CreateSesiModal({ onSesiCreated }) {
+  const [open, setOpen] = useState(false)
+  const [skemaId, setSkemaId] = useState("")
+  const [tipeUjian, setTipeUjian] = useState("")
+  const [tanggal, setTanggal] = useState(null)
+  const [waktu, setWaktu] = useState("")
+  const [ruangan, setRuangan] = useState("")
+  const [kapasitas, setKapasitas] = useState("")
+  const [skemaOptions, setSkemaOptions] = useState([])
+  const [isSubmitting, setIsSubmitting] = useState(false)
+  const [error, setError] = useState(null)
+
+  useEffect(() => {
+    if (open) {
+      mockGetAllSkema().then(setSkemaOptions)
+    }
+  }, [open])
+
+  const handleSubmit = async (e) => {
+    e.preventDefault()
+    setError(null)
+    if (!skemaId || !tipeUjian || !tanggal || !waktu || !ruangan || !kapasitas) {
+      setError("Semua field wajib diisi.")
+      return
+    }
+
+    setIsSubmitting(true)
+    try {
+      const sesiData = {
+        skemaId,
+        tipeUjian,
+        tanggal,
+        waktu,
+        ruangan,
+        kapasitas: parseInt(kapasitas),
+      }
+      const newSesi = await mockCreateSesiUjianOffline(sesiData)
+      onSesiCreated(newSesi)
+      setOpen(false)
+      // Reset form
+      setSkemaId("")
+      setTipeUjian("")
+      setTanggal(null)
+      setWaktu("")
+      setRuangan("")
+      setKapasitas("")
+    } catch (err) {
+      setError(err.message || "Gagal membuat sesi.")
+    } finally {
+      setIsSubmitting(false)
+    }
+  }
+
+  return (
+    <Dialog open={open} onOpenChange={setOpen}>
+      <DialogTrigger asChild>
+        <Button>
+          <PlusCircle className="w-4 h-4 mr-2" />
+          Buat Sesi Ujian Baru
+        </Button>
+      </DialogTrigger>
+      <DialogContent className="sm:max-w-[425px]">
+        <DialogHeader>
+          <DialogTitle>Buat Sesi Ujian Offline</DialogTitle>
+          <DialogDescription>
+            Buat jadwal untuk ujian yang dilaksanakan secara tatap muka (Ujian Teori / Unjuk Diri).
+          </DialogDescription>
+        </DialogHeader>
+        <form onSubmit={handleSubmit} className="space-y-4">
+          <div className="space-y-2">
+            <Label htmlFor="skema">Skema</Label>
+            <Select value={skemaId} onValueChange={setSkemaId}>
+              <SelectTrigger id="skema">
+                <SelectValue placeholder="Pilih skema" />
+              </SelectTrigger>
+              <SelectContent>
+                {skemaOptions.map((skema) => (
+                  <SelectItem key={skema.id} value={skema.id}>{skema.judul}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+          
+          <div className="space-y-2">
+            <Label htmlFor="tipe-sesi">Tipe Sesi Ujian</Label>
+            <Select value={tipeUjian} onValueChange={setTipeUjian}>
+              <SelectTrigger id="tipe-sesi">
+                <SelectValue placeholder="Pilih tipe sesi" />
+              </SelectTrigger>
+              <SelectContent>
+                {/* --- (INI PERBAIKANNYA) --- */}
+                <SelectItem value="TEORI">Ujian Teori (Offline)</SelectItem>
+                <SelectItem value="UNJUK_DIRI">Ujian Unjuk Diri</SelectItem> 
+                {/* --- (BATAS PERBAIKAN - TYPO DIHAPUS) --- */}
+              </SelectContent>
+            </Select>
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="tanggal">Tanggal</Label>
+            <Popover>
+              <PopoverTrigger asChild>
+                <Button
+                  id="tanggal"
+                  variant={"outline"}
+                  className="w-full justify-start text-left font-normal"
+                >
+                  <CalendarIcon className="mr-2 h-4 w-4" />
+                  {tanggal ? tanggal.toLocaleDateString("id-ID") : <span>Pilih tanggal</span>}
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent className="w-auto p-0">
+                <Calendar
+                  mode="single"
+                  selected={tanggal}
+                  onSelect={setTanggal}
+                  initialFocus
+                />
+              </PopoverContent>
+            </Popover>
+          </div>
+
+          <div className="grid grid-cols-2 gap-4">
+            <div className="space-y-2">
+              <Label htmlFor="waktu">Waktu (WIB)</Label>
+              <Input id="waktu" value={waktu} onChange={(e) => setWaktu(e.target.value)} placeholder="Contoh: 09:00" />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="kapasitas">Kapasitas</Label>
+              <Input id="kapasitas" type="number" value={kapasitas} onChange={(e) => setKapasitas(e.target.value)} placeholder="Contoh: 50" />
+            </div>
+          </div>
+          
+          <div className="space-y-2">
+            <Label htmlFor="ruangan">Ruangan</Label>
+            <Input id="ruangan" value={ruangan} onChange={(e) => setRuangan(e.target.value)} placeholder="Contoh: Auditorium STIS" />
+          </div>
+
+          {error && (
+            <Alert variant="destructive">
+              <AlertCircle className="h-4 w-4" />
+              <AlertTitle>Error</AlertTitle>
+              <AlertDescription>{error}</AlertDescription>
+            </Alert>
+          )}
+
+          <DialogFooter>
+            <Button type="button" variant="outline" onClick={() => setOpen(false)}>Batal</Button>
+            <Button type="submit" disabled={isSubmitting}>
+              {isSubmitting ? "Menyimpan..." : "Simpan Sesi"}
+            </Button>
+          </DialogFooter>
+        </form>
+      </DialogContent>
+    </Dialog>
+  )
+}
 
 export default function TimelinePage() {
-  const [skemaId, setSkemaId] = useState(""); // <-- Ubah default jadi string kosong
-  const [linimasa, setLinimasa] = useState([]);
-  const [sesiUjian, setSesiUjian] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [activeTab, setActiveTab] = useState("linimasa");
+  const { user, loading: isAuthLoading } = useAuth()
+  const router = useRouter()
+  const [sesiUjian, setSesiUjian] = useState([])
+  const [loading, setLoading] = useState(true)
+  const [skemaOptions, setSkemaOptions] = useState([])
+  const [selectedSkema, setSelectedSkema] = useState("")
 
-  // --- (STATE BARU UNTUK LIST SKEMA) ---
-  const [skemaList, setSkemaList] = useState([]);
-  const [loadingSkema, setLoadingSkema] = useState(true);
-
-  // Dialog states
-  const [isLinimasaDialogOpen, setIsLinimasaDialogOpen] = useState(false);
-  const [isSesiDialogOpen, setIsSesiDialogOpen] = useState(false);
-  const [isSaving, setIsSaving] = useState(false); // <-- Tambah state saving
-  const [editingLinimasa, setEditingLinimasa] = useState(null);
-  const [editingSesi, setEditingSesi] = useState(null);
-
-  // Form states
-  const [linimasaForm, setLinimasaForm] = useState({
-    judul: "",
-    deskripsi: "",
-    tanggal: "",
-    waktu: "",
-    tipe: "PEMBELAJARAN",
-    urlZoom: "",
-  });
-
-  const [sesiForm, setSesiForm] = useState({
-    tanggal: "",
-    waktu: "",
-    tipeUjian: "TEORI",
-    ruangan: "",
-    kapasitas: "",
-  });
-
-  // --- (PERUBAHAN DI SINI: Panggil loadSkemaList) ---
   useEffect(() => {
-    loadSkemaList(); // Panggil fungsi baru
-  }, []);
-
-  // --- (PERUBAHAN DI SINI: Cek skemaId) ---
-  useEffect(() => {
-    if (skemaId) { // Hanya jalankan jika skemaId sudah terisi
-      loadData();
+    if (isAuthLoading) return;
+    if (!user) {
+      router.push("/login")
+      return;
     }
-  }, [skemaId]);
-
-  // --- (FUNGSI BARU UNTUK LOAD SKEMA) ---
-  const loadSkemaList = async () => {
-    try {
-      setLoadingSkema(true);
-      const data = await mockGetAllSkema();
-      setSkemaList(data);
-      if (data.length > 0) {
-        setSkemaId(data[0].id); // Otomatis set skema pertama sebagai default
-      } else {
-        setLoading(false); // Gak ada skema, stop loading utama
+    
+    mockGetAllSkema().then(options => {
+      setSkemaOptions(options)
+      if (options.length > 0) {
+        setSelectedSkema(options[0].id)
       }
-    } catch (error) {
-      console.error("[v0] Error loading skema list:", error);
-      setLoading(false); // Stop loading utama jika error
-    } finally {
-      setLoadingSkema(false);
-    }
-  };
-  // --- (BATAS FUNGSI BARU) ---
+    })
+  }, [user, isAuthLoading, router])
 
-  const loadData = async () => {
+  useEffect(() => {
+    if (selectedSkema) {
+      loadSesiUjian(selectedSkema)
+    }
+  }, [selectedSkema])
+
+  const loadSesiUjian = async (skemaId) => {
     try {
-      setLoading(true);
-      const [linimasaData, sesiData] = await Promise.all([
-        mockGetLinimasa(skemaId), 
-        mockGetSesiUjianOffline(skemaId)
-      ]);
-      setLinimasa(linimasaData);
-      setSesiUjian(sesiData);
+      setLoading(true)
+      const data = await mockGetSesiUjianOffline(skemaId)
+      setSesiUjian(data)
     } catch (error) {
-      console.error("[v0] Error loading timeline data:", error);
+      console.error("Error loading sesi ujian:", error)
     } finally {
-      setLoading(false);
+      setLoading(false)
     }
-  };
+  }
 
-  const handleSaveLinimasa = () => {
-    if (!linimasaForm.judul || !linimasaForm.tanggal) {
-      alert("Judul dan tanggal wajib diisi");
-      return;
+  const handleSesiCreated = (newSesi) => {
+    // Jika sesi baru sesuai skema yang dipilih, tambahkan ke list
+    if (newSesi.skemaId === selectedSkema) {
+      setSesiUjian(prev => [newSesi, ...prev])
     }
-    // TODO: Panggil API create/update linimasa
-    setIsSaving(true); // <-- Tambah
-    console.log("[v0] Saving linimasa:", linimasaForm);
-    alert("CRUD Linimasa belum diimplementasikan.");
-    setIsLinimasaDialogOpen(false);
-    setLinimasaForm({
-      judul: "", deskripsi: "", tanggal: "", waktu: "", tipe: "PEMBELAJARAN", urlZoom: "",
-    });
-    setIsSaving(false); // <-- Tambah
-    // Harusnya panggil loadData() lagi
-  };
+  }
 
-  const handleSaveSesi = async () => {
-    if (!sesiForm.tanggal || !sesiForm.waktu || !sesiForm.ruangan || !sesiForm.kapasitas) {
-      alert("Semua field wajib diisi");
-      return;
-    }
-    try {
-      setIsSaving(true); // <-- Tambah
-      const newSesi = await mockCreateSesiUjianOffline({
-        skemaId,
-        tanggal: new Date(sesiForm.tanggal),
-        waktu: sesiForm.waktu,
-        tipeUjian: sesiForm.tipeUjian,
-        ruangan: sesiForm.ruangan,
-        kapasitas: Number.parseInt(sesiForm.kapasitas),
-      });
-      // Panggil loadData() biar konsisten
-      await loadData();
-      setIsSesiDialogOpen(false);
-      setSesiForm({
-        tanggal: "", waktu: "", tipeUjian: "TEORI", ruangan: "", kapasitas: "",
-      });
-    } catch (error) {
-      console.error("[v0] Error saving sesi:", error);
-      alert("Gagal menyimpan sesi ujian");
-    } finally {
-      setIsSaving(false); // <-- Tambah
-    }
-  };
-
-  const formatDate = (date) => {
-    return new Intl.DateTimeFormat("id-ID", {
-      year: "numeric",
-      month: "long",
-      day: "numeric",
-    }).format(new Date(date));
-  };
-
-  const getTipeLabel = (tipe) => {
-    const labels = {
-      PEMBELAJARAN: "🎓 Pembelajaran",
-      UJIAN: "📝 Ujian",
-      PENGUMUMAN: "📢 Pengumuman",
-      SESI_OFFLINE: "📍 Sesi Offline",
-      LAINNYA: "📌 Lainnya",
-    };
-    return labels[tipe] || tipe;
-  };
-
-  const getExamTypeLabel = (tipe) => {
-    const labels = {
-      TEORI: "Ujian Teori",
-      PRAKTIKUM: "Ujian Praktikum",
-      UNJUK_DIRI: "Ujian Unjuk Diri",
-    };
-    return labels[tipe];
-  };
-
-  const getExamTypeColor = (tipe) => {
-    const colors = {
-      TEORI: "bg-blue-100 text-blue-800",
-      PRAKTIKUM: "bg-orange-100 text-orange-800",
-      UNJUK_DIRI: "bg-purple-100 text-purple-800",
-    };
-    return colors[tipe];
-  };
+  const getTipeUjianLabel = (tipe) => {
+    if (tipe === "UNJUK_DIRI") return "Unjuk Diri"
+    if (tipe === "TEORI") return "Ujian Teori"
+    return tipe
+  }
 
   return (
     <MainLayout>
-      <div className="flex-1 p-6 space-y-6 max-w-7xl mx-auto">
-        {/* Header */}
-        <div>
-          <h1 className="text-3xl font-bold text-gray-900">Manajemen Jadwal & Kegiatan</h1>
-          <p className="text-gray-600 mt-1">Atur linimasa pembelajaran, sesi ujian online, dan ujian offline untuk peserta</p>
+      <div className="p-6 space-y-6">
+        <div className="flex flex-col md:flex-row md:items-center md:justify-between">
+          <div>
+            <h1 className="text-3xl font-bold">Manajemen Jadwal Ujian</h1>
+            <p className="text-muted-foreground mt-1">Buat dan kelola sesi ujian offline (Ujian Teori & Unjuk Diri).</p>
+          </div>
+          <div className="flex gap-2 mt-4 md:mt-0">
+            <Select value={selectedSkema} onValueChange={setSelectedSkema}>
+              <SelectTrigger className="w-48">
+                <SelectValue placeholder="Pilih skema" />
+              </SelectTrigger>
+              <SelectContent>
+                {skemaOptions.map((skema) => (
+                  <SelectItem key={skema.id} value={skema.id}>{skema.judul}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <CreateSesiModal onSesiCreated={handleSesiCreated} />
+          </div>
         </div>
 
-        {/* Skema Selector */}
-        <Card className="bg-white border-gray-200">
-          <CardContent className="pt-6">
-            <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
-              <div className="flex items-center gap-4">
-                <label className="font-semibold text-gray-900">Skema:</label>
-                
-                {/* --- (BLOK INI YANG BERUBAH TOTAL) --- */}
-                <Select 
-                  value={skemaId} 
-                  onValueChange={(value) => setSkemaId(value)}
-                  disabled={loadingSkema} // <-- Tambah disable
-                >
-                  <SelectTrigger className="w-72 border-gray-300 bg-white">
-                    <SelectValue placeholder="Memuat skema..." />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {skemaList.length === 0 && !loadingSkema ? (
-                      <SelectItem value="" disabled>Tidak ada skema</SelectItem>
-                    ) : (
-                      skemaList.map(skema => (
-                        <SelectItem key={skema.id} value={skema.id}>
-                          {skema.judul} ({skema.id})
-                        </SelectItem>
-                      ))
-                    )}
-                  </SelectContent>
-                </Select>
-                {/* --- (BATAS PERUBAHAN) --- */}
-
+        <Card>
+          <CardHeader>
+            <CardTitle>Daftar Sesi Ujian (Skema: {selectedSkema})</CardTitle>
+            <CardDescription>Klik sesi untuk melihat dan mengatur peserta (plotting).</CardDescription>
+          </CardHeader>
+          <CardContent>
+            {loading ? (
+              <div className="space-y-4">
+                <Skeleton className="h-20 w-full" />
+                <Skeleton className="h-20 w-full" />
+                <Skeleton className="h-20 w-full" />
               </div>
-              <div className="flex gap-3">
-                <Button
-                  onClick={() => {
-                    setEditingLinimasa(null);
-                    setLinimasaForm({
-                      judul: "", deskripsi: "", tanggal: "", waktu: "", tipe: "PEMBELAJARAN", urlZoom: "",
-                    });
-                    setIsLinimasaDialogOpen(true);
-                  }}
-                  className="bg-blue-600 hover:bg-blue-700"
-                >
-                  <Plus className="w-4 h-4 mr-2" />
-                  Tambah Kegiatan
-                </Button>
-                <Button
-                  onClick={() => {
-                    setEditingSesi(null);
-                    setSesiForm({
-                      tanggal: "", waktu: "", tipeUjian: "TEORI", ruangan: "", kapasitas: "",
-                    });
-                    setIsSesiDialogOpen(true);
-                  }}
-                  className="bg-green-600 hover:bg-green-700"
-                >
-                  <Plus className="w-4 h-4 mr-2" />
-                  Tambah Sesi Ujian Offline
-                </Button>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-
-        {/* Tabs */}
-        <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-4">
-          <TabsList className="bg-white border-b border-gray-200 p-0 h-auto rounded-none">
-            <TabsTrigger value="linimasa" className="border-b-2 border-transparent data-[state=active]:border-blue-600 rounded-none px-4 py-3">
-              Linimasa Kegiatan {!loading && <span className="ml-2 text-xs">({linimasa.length})</span>}
-            </TabsTrigger>
-            <TabsTrigger value="sesi" className="border-b-2 border-transparent data-[state=active]:border-blue-600 rounded-none px-4 py-3">
-              Sesi Ujian Offline {!loading && <span className="ml-2 text-xs">({sesiUjian.length})</span>}
-            </TabsTrigger>
-          </TabsList>
-
-          {/* Linimasa Tab (Manajemen Zoom) */}
-          <TabsContent value="linimasa" className="space-y-4">
-            <Card className="bg-white border-gray-200">
-              <CardHeader>
-                <CardTitle>Linimasa Kegiatan {skemaId}</CardTitle>
-                <CardDescription>Jadwal pembelajaran, pengumuman, dan kegiatan penting lainnya</CardDescription>
-              </CardHeader>
-              <CardContent>
-                {loading ? (
-                  <div className="space-y-3">
-                    {[...Array(3)].map((_, i) => (
-                      <Skeleton key={i} className="h-24 w-full" />
-                    ))}
-                  </div>
-                ) : linimasa.length === 0 ? (
-                  <Alert>
-                    <AlertDescription>Belum ada kegiatan yang dijadwalkan untuk skema ini.</AlertDescription>
-                  </Alert>
-                ) : (
-                  <div className="space-y-3">
-                    {linimasa
-                      .sort((a, b) => new Date(a.tanggal).getTime() - new Date(b.tanggal).getTime())
-                      .map((item) => (
-                        <div key={item.id} className="flex items-start gap-4 p-4 border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors">
-                          <div className="flex-shrink-0 mt-1">
-                            <div className="w-10 h-10 rounded-lg bg-blue-100 flex items-center justify-center">
-                              {/* --- Icon logic disederhanakan --- */}
-                              {item.tipe === "PEMBELAJARAN" ? <span className="text-xl">🎓</span> : <span className="text-xl">📢</span>}
-                            </div>
-                          </div>
-
-                          <div className="flex-1 min-w-0">
-                            <h4 className="font-semibold text-gray-900">{item.judul}</h4>
-                            <p className="text-sm text-gray-600 mt-1">{item.deskripsi}</p>
-
-                            <div className="flex flex-wrap gap-4 mt-3">
-                              <div className="flex items-center gap-1 text-xs text-gray-600">
-                                <Calendar className="w-4 h-4" />
-                                <span>{formatDate(item.tanggal)}</span>
-                              </div>
-                              {item.waktu && (
-                                <div className="flex items-center gap-1 text-xs text-gray-600">
-                                  <Clock className="w-4 h-4" />
-                                  <span>{item.waktu}</span>
-                                </div>
-                              )}
-                              {item.urlZoom && (
-                                <Button variant="ghost" size="sm" className="h-auto p-0 text-xs text-blue-600 hover:bg-transparent hover:text-blue-700" asChild>
-                                  <a href={item.urlZoom} target="_blank" rel="noopener noreferrer">
-                                    <Video className="w-3 h-3 mr-1" />
-                                    Zoom Link
-                                  </a>
-                                </Button>
-                              )}
-                            </div>
-                          </div>
-
-                          <div className="flex gap-2 flex-shrink-0">
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              onClick={() => {
-                                setEditingLinimasa(item);
-                                setLinimasaForm({
-                                  judul: item.judul,
-                                  deskripsi: item.deskripsi,
-                                  tanggal: new Date(item.tanggal).toISOString().split("T")[0],
-                                  waktu: item.waktu || "",
-                                  tipe: item.tipe,
-                                  urlZoom: item.urlZoom || "",
-                                });
-                                setIsLinimasaDialogOpen(true);
-                              }}
-                              className="text-blue-600 hover:bg-blue-50"
-                            >
-                              <Edit2 className="w-4 h-4" />
-                            </Button>
-                            <Button variant="ghost" size="sm" onClick={() => console.log("[v0] Delete linimasa:", item.id)} className="text-red-600 hover:bg-red-50">
-                              <Trash2 className="w-4 h-4" />
-                            </Button>
-                          </div>
-                        </div>
-                      ))}
-                  </div>
-                )}
-              </CardContent>
-            </Card>
-          </TabsContent>
-
-          {/* Sesi Ujian Offline Tab (Manajemen Plotting) */}
-          <TabsContent value="sesi" className="space-y-4">
-            <Card className="bg-white border-gray-200">
-              <CardHeader>
-                <CardTitle>Sesi Ujian Offline {skemaId}</CardTitle>
-                <CardDescription>Jadwal ujian offline dengan ruangan dan kapasitas tertentu</CardDescription>
-              </CardHeader>
-              <CardContent>
-                {loading ? (
-                  <div className="space-y-3">
-                    {[...Array(2)].map((_, i) => (
-                      <Skeleton key={i} className="h-24 w-full" />
-                    ))}
-                  </div>
-                ) : sesiUjian.length === 0 ? (
-                  <Alert>
-                    <AlertDescription>Belum ada sesi ujian offline yang dijadwalkan untuk skema ini. Buat sesi baru untuk mulai menjadwalkan ujian offline.</AlertDescription>
-                  </Alert>
-                ) : (
-                  <div className="space-y-3">
-                    {sesiUjian
-                      .sort((a, b) => new Date(a.tanggal).getTime() - new Date(b.tanggal).getTime())
-                      .map((sesi) => (
-                        <div key={sesi.id} className="flex items-start gap-4 p-4 border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors">
-                          <div className="flex-shrink-0 mt-1">
-                            <div className={`w-10 h-10 rounded-lg ${getExamTypeColor(sesi.tipeUjian)} flex items-center justify-center`}>
-                              {sesi.tipeUjian === "TEORI" && <span className="text-lg">📝</span>}
-                              {sesi.tipeUjian === "PRAKTIKUM" && <span className="text-lg">💻</span>}
-                              {sesi.tipeUjian === "UNJUK_DIRI" && <span className="text-lg">🎤</span>}
-                            </div>
-                          </div>
-
-                          <div className="flex-1 min-w-0">
-                            <div className="flex items-center gap-2 mb-2">
-                              <h4 className="font-semibold text-gray-900">{getExamTypeLabel(sesi.tipeUjian)}</h4>
-                              <span className={`inline-flex px-2.5 py-0.5 text-xs font-medium rounded-full ${getExamTypeColor(sesi.tipeUjian)}`}>{getExamTypeLabel(sesi.tipeUjian)}</span>
-                            </div>
-
-                            <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
-                              <div className="flex items-center gap-2 text-gray-700">
-                                <Calendar className="w-4 h-4 text-gray-500" />
-                                <div>
-                                  <p className="text-xs text-gray-500">Tanggal</p>
-                                  <p className="font-medium">{formatDate(sesi.tanggal)}</p>
-                                </div>
-                              </div>
-                              <div className="flex items-center gap-2 text-gray-700">
-                                <Clock className="w-4 h-4 text-gray-500" />
-                                <div>
-                                  <p className="text-xs text-gray-500">Waktu</p>
-                                  <p className="font-medium">{sesi.waktu}</p>
-                                </div>
-                              </div>
-                              <div className="flex items-center gap-2 text-gray-700">
-                                <MapPin className="w-4 h-4 text-gray-500" />
-                                <div>
-                                  <p className="text-xs text-gray-500">Ruangan</p>
-                                  <p className="font-medium">{sesi.ruangan}</p>
-                                </div>
-                              </div>
-                              <div className="flex items-center gap-2 text-gray-700">
-                                <Users className="w-4 h-4 text-gray-500" />
-                                <div>
-                                  <p className="text-xs text-gray-500">Kapasitas</p>
-                                  <p className="font-medium">{sesi.kapasitas} Peserta</p>
-                                </div>
-                              </div>
-                            </div>
-                          </div>
-
-                          <div className="flex gap-2 flex-shrink-0">
-                            <Button variant="outline" size="sm" className="text-blue-600 border-blue-200 hover:bg-blue-50 bg-transparent" asChild>
-                              <a href={`/admin/offline-exam/${sesi.id}`}>Atur Peserta</a>
-                            </Button>
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              onClick={() => {
-                                setEditingSesi(sesi);
-                                setSesiForm({
-                                  tanggal: new Date(sesi.tanggal).toISOString().split("T")[0],
-                                  waktu: sesi.waktu,
-                                  tipeUjian: sesi.tipeUjian,
-                                  ruangan: sesi.ruangan,
-                                  kapasitas: String(sesi.kapasitas),
-                                });
-                                setIsSesiDialogOpen(true);
-                              }}
-                              className="text-blue-600 hover:bg-blue-50"
-                            >
-                              <Edit2 className="w-4 h-4" />
-                            </Button>
-                            <Button variant="ghost" size="sm" onClick={() => console.log("[v0] Delete sesi:", sesi.id)} className="text-red-600 hover:bg-red-50">
-                              <Trash2 className="w-4 h-4" />
-                            </Button>
-                          </div>
-                        </div>
-                      ))}
-                  </div>
-                )}
-              </CardContent>
-            </Card>
-          </TabsContent>
-        </Tabs>
-      </div>
-
-      {/* Linimasa Dialog */}
-      <Dialog open={isLinimasaDialogOpen} onOpenChange={setIsLinimasaDialogOpen}>
-        <DialogContent className="sm:max-w-md">
-          <DialogHeader>
-            <DialogTitle>{editingLinimasa ? "Edit Kegiatan" : "Tambah Kegiatan Baru"}</DialogTitle>
-            <DialogDescription className="text-sm">{editingLinimasa ? "Ubah jadwal dan detail kegiatan" : "Buat kegiatan baru dalam linimasa pembelajaran"}</DialogDescription>
-          </DialogHeader>
-          <div className="space-y-4 py-4">
-            <div>
-              <label className="text-sm font-medium text-gray-900">Judul Kegiatan *</label>
-              <Input placeholder="Contoh: Sesi Pembelajaran Unit 1" value={linimasaForm.judul} onChange={(e) => setLinimasaForm({ ...linimasaForm, judul: e.target.value })} className="mt-1 border-gray-300" />
-            </div>
-            <div>
-              <label className="text-sm font-medium text-gray-900">Deskripsi *</label>
-              <Textarea placeholder="Jelaskan detail kegiatan ini" value={linimasaForm.deskripsi} onChange={(e) => setLinimasaForm({ ...linimasaForm, deskripsi: e.target.value })} rows={3} className="mt-1 border-gray-300" />
-            </div>
-            <div>
-              <label className="text-sm font-medium text-gray-900">Tipe Kegiatan *</label>
-              <Select value={linimasaForm.tipe} onValueChange={(value) => setLinimasaForm({ ...linimasaForm, tipe: value })}>
-                <SelectTrigger className="mt-1 border-gray-300">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="PEMBELAJARAN">🎓 Pembelajaran</SelectItem>
-                  <SelectItem value="UJIAN">📝 Ujian</SelectItem>
-                  <SelectItem value="PENGUMUMAN">📢 Pengumuman</SelectItem>
-                  <SelectItem value="LAINNYA">📌 Lainnya</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-            <div>
-              <label className="text-sm font-medium text-gray-900">Tanggal *</label>
-              <Input type="date" value={linimasaForm.tanggal} onChange={(e) => setLinimasaForm({ ...linimasaForm, tanggal: e.target.value })} className="mt-1 border-gray-300" />
-            </div>
-            <div>
-              <label className="text-sm font-medium text-gray-900">Waktu (opsional)</label>
-              <Input type="time" value={linimasaForm.waktu} onChange={(e) => setLinimasaForm({ ...linimasaForm, waktu: e.target.value })} className="mt-1 border-gray-300" />
-            </div>
-            {linimasaForm.tipe === "PEMBELAJARAN" && (
-              <div>
-                <label className="text-sm font-medium text-gray-900">Link Zoom (opsional)</label>
-                <Input placeholder="https://zoom.us/j/..." value={linimasaForm.urlZoom} onChange={(e) => setLinimasaForm({ ...linimasaForm, urlZoom: e.target.value })} className="mt-1 border-gray-300" />
+            ) : sesiUjian.length === 0 ? (
+              <p className="text-center text-muted-foreground py-10">Belum ada sesi ujian yang dibuat untuk skema ini.</p>
+            ) : (
+              <div className="space-y-4">
+                {sesiUjian.map((sesi) => (
+                  <Card 
+                    key={sesi.id} 
+                    className="hover:shadow-md transition-shadow cursor-pointer"
+                    onClick={() => router.push(`/admin/offline-exam/${sesi.id}`)}
+                  >
+                    <CardContent className="p-4 flex items-center justify-between">
+                      <div className="space-y-1">
+                        <span className={`text-xs font-semibold px-2 py-0.5 rounded-full ${sesi.tipeUjian === "TEORI" ? "bg-blue-100 text-blue-800" : "bg-purple-100 text-purple-800"}`}>
+                          {getTipeUjianLabel(sesi.tipeUjian)}
+                        </span>
+                        <h3 className="font-semibold text-lg">{sesi.ruangan}</h3>
+                        <p className="text-sm text-muted-foreground flex items-center gap-4">
+                          <span className="flex items-center gap-1.5">
+                            <CalendarIcon className="w-3.5 h-3.5" />
+                            {new Date(sesi.tanggal).toLocaleDateString("id-ID", { day: 'numeric', month: 'long', year: 'numeric' })}
+                          </span>
+                          <span className="flex items-center gap-1.5">
+                            <Clock className="w-3.5 h-3.5" />
+                            {sesi.waktu} WIB
+                          </span>
+                        </p>
+                      </div>
+                      <div className="text-right">
+                        <span className="text-2xl font-bold">{/* (plottingDb.get(sesi.id) || []).length */}</span>
+                        <p className="text-sm text-muted-foreground">/ {sesi.kapasitas} Peserta</p>
+                      </div>
+                    </CardContent>
+                  </Card>
+                ))}
               </div>
             )}
-          </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setIsLinimasaDialogOpen(false)} disabled={isSaving}>
-              Batal
-            </Button>
-            <Button onClick={handleSaveLinimasa} className="bg-blue-600 hover:bg-blue-700" disabled={isSaving}>
-              {isSaving ? <Spinner className="w-4 h-4 mr-2" /> : "Simpan Kegiatan"}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-
-      {/* Sesi Ujian Dialog */}
-      <Dialog open={isSesiDialogOpen} onOpenChange={setIsSesiDialogOpen}>
-        <DialogContent className="sm:max-w-md">
-          <DialogHeader>
-            <DialogTitle>{editingSesi ? "Edit Sesi Ujian" : "Tambah Sesi Ujian Offline"}</DialogTitle>
-            <DialogDescription className="text-sm">{editingSesi ? "Ubah jadwal dan detail sesi ujian offline" : `Buat jadwal baru untuk skema ${skemaId}`}</DialogDescription>
-          </DialogHeader>
-          <div className="space-y-4 py-4">
-            <div>
-              <label className="text-sm font-medium text-gray-900">Tipe Ujian *</label>
-              <Select value={sesiForm.tipeUjian} onValueChange={(value) => setSesiForm({ ...sesiForm, tipeUjian: value })}>
-                <SelectTrigger className="mt-1 border-gray-300">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="TEORI">📝 Ujian Teori</SelectItem>
-                  <SelectItem value="PRAKTIKUM">💻 Ujian Praktikum</SelectItem>
-                  <SelectItem value="UNJUK_DIRI">🎤 Ujian Unjuk Diri</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-            <div>
-              <label className="text-sm font-medium text-gray-900">Tanggal *</label>
-              <Input type="date" value={sesiForm.tanggal} onChange={(e) => setSesiForm({ ...sesiForm, tanggal: e.target.value })} className="mt-1 border-gray-300" />
-            </div>
-            <div>
-              <label className="text-sm font-medium text-gray-900">Waktu *</label>
-              <Input type="time" value={sesiForm.waktu} onChange={(e) => setSesiForm({ ...sesiForm, waktu: e.target.value })} className="mt-1 border-gray-300" />
-            </div>
-            <div>
-              <label className="text-sm font-medium text-gray-900">Ruangan *</label>
-              <Input placeholder="Contoh: Ruang Ujian A - Lantai 2" value={sesiForm.ruangan} onChange={(e) => setSesiForm({ ...sesiForm, ruangan: e.target.value })} className="mt-1 border-gray-300" />
-            </div>
-            <div>
-              <label className="text-sm font-medium text-gray-900">Kapasitas *</label>
-              <Input type="number" placeholder="30" value={sesiForm.kapasitas} onChange={(e) => setSesiForm({ ...sesiForm, kapasitas: e.target.value })} className="mt-1 border-gray-300" />
-            </div>
-          </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setIsSesiDialogOpen(false)} disabled={isSaving}>
-              Batal
-            </Button>
-            <Button onClick={handleSaveSesi} className="bg-green-600 hover:bg-green-700" disabled={isSaving}>
-              {isSaving ? <Spinner className="w-4 h-4 mr-2" /> : "Simpan Sesi Ujian"}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+          </CardContent>
+        </Card>
+      </div>
     </MainLayout>
-  );
+  )
 }

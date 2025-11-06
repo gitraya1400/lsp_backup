@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useState } from "react"
+import { useEffect, useState, useMemo } from "react"
 import { useRouter } from "next/navigation"
 import { MainLayout } from "@/components/layout/main-layout"
 import { useAuth } from "@/lib/auth-context"
@@ -12,6 +12,7 @@ import { Skeleton } from "@/components/ui/skeleton"
 import { Check, Play, Lock } from "lucide-react"
 import Link from "next/link"
 
+// Komponen FaseCard (sudah di luar, best practice)
 const FaseCard = ({ fase, judul, deskripsi, status, link, progressValue }) => {
   let statusButton
 
@@ -68,17 +69,25 @@ const FaseCard = ({ fase, judul, deskripsi, status, link, progressValue }) => {
   )
 }
 
+
 export default function AsesiDashboard() {
-  const { user } = useAuth()
+  const { user, loading: isAuthLoading } = useAuth() // Ambil status loading auth
   const router = useRouter()
   const [progress, setProgress] = useState(null)
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
-    if (user) {
-      loadData()
+    // Perbaikan bug refresh
+    if (isAuthLoading) {
+      return; // Tunggu auth selesai memuat
     }
-  }, [user, router])
+    if (!user) {
+      router.push("/login"); // Jika tidak ada user, tendang
+      return;
+    }
+    // Jika user ada, baru muat data
+    loadData()
+  }, [user, isAuthLoading, router])
 
   const loadData = async () => {
     try {
@@ -87,6 +96,7 @@ export default function AsesiDashboard() {
 
       const progressData = await mockGetProgressAsesi(user.id)
       
+      // Guard clause untuk Pra-Asesmen
       if (progressData.statusPraAsesmen === "BELUM") {
         router.push("/asesi/pra-asesmen")
         return 
@@ -101,7 +111,8 @@ export default function AsesiDashboard() {
     }
   }
   
-  if (loading || !progress) {
+  // Tampilkan skeleton jika auth atau data sedang loading
+  if (loading || isAuthLoading || !progress) {
      return (
       <MainLayout>
         <div className="p-6 space-y-4">
@@ -113,6 +124,7 @@ export default function AsesiDashboard() {
     )
   }
 
+  // --- (LOGIKA BARU 3 FASE) ---
   const progressPercentage = progress?.progressPembelajaran || 0
   const statusFase1 = progressPercentage === 100 ? "SELESAI" : "AKTIF"
   
@@ -121,14 +133,11 @@ export default function AsesiDashboard() {
     statusFase2 = progress.tryoutSelesai ? "SELESAI" : "AKTIF"
   }
   
+  // Fase 3 (Ujian) sekarang hanya bergantung pada Fase 2 (Tryout)
   let statusFase3 = "TERKUNCI"
   if (statusFase2 === "SELESAI") {
-    statusFase3 = progress.ujianTeoriSelesai ? "SELESAI" : "AKTIF"
-  }
-
-  let statusFase4 = "TERKUNCI"
-  if (statusFase3 === "SELESAI") {
-    statusFase4 = "AKTIF" 
+    statusFase3 = "AKTIF" 
+    // Logika penguncian detail (Teori vs Praktikum) diurus di /asesi/exams
   }
 
   return (
@@ -137,7 +146,7 @@ export default function AsesiDashboard() {
         
         <div className="w-full bg-blue-700 text-white rounded-lg p-8">
             <h1 className="text-3xl font-bold">Selamat Datang, {user?.nama}!</h1>
-            <p className="text-blue-200 mt-1">Ikuti 4 fase pembelajaran untuk menyelesaikan sertifikasi.</p>
+            <p className="text-blue-200 mt-1">Ikuti 3 fase untuk menyelesaikan sertifikasi.</p>
         </div>
 
         <div className="space-y-4">
@@ -152,23 +161,18 @@ export default function AsesiDashboard() {
           <FaseCard 
             fase="Fase 2: Tryout"
             judul="Tryout"
-            deskripsi="Kerjakan tryout sebelum memulai ujian teori"
+            deskripsi="Kerjakan tryout sebelum memulai ujian"
             status={statusFase2}
             link="/asesi/tryout"
           />
+
+          {/* --- (KARTU FASE 3) --- */}
           <FaseCard 
-            fase="Fase 3: Ujian Teori"
-            judul="Ujian Teori"
-            deskripsi="Kerjakan ujian teori sesuai skema"
+            fase="Fase 3: Ujian Kompetensi"
+            judul="Ujian Teori, Praktikum & Unjuk Diri"
+            deskripsi="Masuk ke hub ujian untuk melihat jadwal dan mengerjakan ujian."
             status={statusFase3}
-            link="/asesi/exams"
-          />
-          <FaseCard 
-            fase="Fase 4: Ujian Praktikum"
-            judul="Ujian Praktikum & Unjuk Diri"
-            deskripsi="Kerjakan ujian praktikum sesuai soal yang diberikan"
-            status={statusFase4}
-            link="/asesi/exams"
+            link="/asesi/exams" // <-- Link ke halaman hub ujian
           />
         </div>
       </div>

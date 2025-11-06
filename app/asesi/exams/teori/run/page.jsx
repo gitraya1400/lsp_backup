@@ -7,11 +7,17 @@ import { MainLayout } from "@/components/layout/main-layout"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Textarea } from "@/components/ui/textarea"
-import { Alert, AlertDescription } from "@/components/ui/alert"
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog"
-import { mockGetSoalForUnit, mockGetUnitsForSkema, mockSubmitUjianTeori } from "@/lib/api-mock"
 import { Skeleton } from "@/components/ui/skeleton"
-import { AlertCircle, Clock } from "lucide-react"
+import { AlertCircle, Clock, Home, Loader2 } from "lucide-react"
+
+import { 
+  mockGetSoalForUnit, 
+  mockGetUnitsForSkema, 
+  mockSubmitUjianTeori,
+  mockGetExamStatus // API BARU UNTUK KEAMANAN
+} from "@/lib/api-mock"
 
 // Fungsi helper untuk kunci localStorage yang unik per user & skema
 const getExamStorageKey = (userId, skemaId) => `teori_exam_progress_${userId}_${skemaId}`;
@@ -24,7 +30,10 @@ export default function TeoriExamRunPage() {
   const [soal, setSoal] = useState([])
   const [unitDetails, setUnitDetails] = useState([]) 
   
-  const [loading, setLoading] = useState(true)
+  const [isLoadingData, setIsLoadingData] = useState(true) // Ganti nama 'loading'
+  const [isChecking, setIsChecking] = useState(true) // State untuk cek jadwal
+  const [authError, setAuthError] = useState(null) // State untuk error jadwal
+
   const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0)
   const [showConfirmSubmit, setShowConfirmSubmit] = useState(false)
 
@@ -33,48 +42,42 @@ export default function TeoriExamRunPage() {
   const [timeLeft, setTimeLeft] = useState(0)
   const [isExamActive, setIsExamActive] = useState(false)
   
-  // Flag untuk menandai data sudah dipulihkan (agar tidak save prematur)
   const [isRestored, setIsRestored] = useState(false)
 
-  // Buat kunci storage yang unik
   const storageKey = useMemo(() => {
     if (!user) return null
     return getExamStorageKey(user.id, user.skemaId)
   }, [user])
 
-  // Fungsi untuk membersihkan data ujian dari storage
   const clearExamState = useCallback(() => {
     if (storageKey) {
       localStorage.removeItem(storageKey)
     }
   }, [storageKey])
 
-  // Fungsi Submit Ujian
   const handleSubmitExam = useCallback(async () => {
     if (!user) return;
     
-    // Set status tidak aktif agar timer berhenti
     setIsExamActive(false)
     
     console.log("Ujian Teori submitted with answers:", answers)
     await mockSubmitUjianTeori(user.id, answers);
     
-    clearExamState(); // Hapus data ujian dari localStorage
+    clearExamState(); 
     
     alert("Ujian Teori selesai! Jawaban Anda telah dikirim untuk dinilai.")
     router.push("/asesi/exams")
   }, [answers, user, router, clearExamState])
 
-  // Efek Samping: Timer Ujian
+  // Efek Samping: Timer Ujian (Tidak berubah, sudah benar)
   useEffect(() => {
-    // Hanya jalankan jika ujian aktif DAN data sudah dipulihkan
     if (!isExamActive || !isRestored) return
     
     const timer = setInterval(() => {
       setTimeLeft((prev) => {
         if (prev <= 1) {
           clearInterval(timer)
-          handleSubmitExam() // Auto-submit saat waktu habis
+          handleSubmitExam()
           return 0
         }
         return prev - 1
@@ -84,71 +87,115 @@ export default function TeoriExamRunPage() {
     return () => clearInterval(timer)
   }, [isExamActive, isRestored, handleSubmitExam])
 
-  // Efek Samping: Memuat data ujian (termasuk memulihkan progres)
+  // Ini diperlukan agar bisa jadi dependensi useEffect dengan aman
+  const loadExamData = useCallback(async () => {
+    if (!user || !storageKey) return; // Safety check
+
+    try {
+      setIsLoadingData(true)
+      const skemaId = user.skemaId || "ADS"
+      const unitsData = await mockGetUnitsForSkema(skemaId)
+      setUnits(unitsData)
+
+      const totalDurasiMenit = unitsData.reduce((sum, unit) => sum + (unit.durasiTeori || 15), 0)
+      const totalDurationInSeconds = totalDurasiMenit * 60
+      
+      const allSoalPromises = unitsData.map(unit => mockGetSoalForUnit(unit.id, "UJIAN_TEORI"))
+      const allSoalArrays = await Promise.all(allSoalPromises)
+      const combinedSoal = allSoalArrays.flat()
+      setSoal(combinedSoal)
+      
+      const details = unitsData.map((unit, index) => ({
+        ...unit,
+        soalCount: allSoalArrays[index].length
+      }))
+      setUnitDetails(details)
+
+      // Logika Pemulihan (Robustness)
+      const savedStateJSON = localStorage.getItem(storageKey)
+      
+      if (savedStateJSON) {
+        const savedState = JSON.parse(savedStateJSON)
+        setAnswers(savedState.answers || {})
+        setTimeLeft(savedState.timeLeft || totalDurationInSeconds)
+        setIsExamActive(true) // Langsung masuk ke ujian
+      } else {
+        setAnswers({})
+        setTimeLeft(totalDurationInSeconds)
+        setIsExamActive(false) // Tampilkan layar Pre-Start
+      }
+      
+    } catch (error) {
+      console.error("Error loading exam:", error)
+      setAuthError("Gagal memuat data soal ujian.") // Set error jika load gagal
+    } finally {
+      setIsLoadingData(false)
+      setIsRestored(true)
+    }
+  }, [user, storageKey]); // Dependensi useCallback
+
+
+  // Efek Samping: Cek Keamanan & Jadwal
   useEffect(() => {
-    if (isAuthLoading) return; // Tunggu auth selesai
-    if (!user) {
+    if (isAuthLoading) return; // 1. Tunggu auth
+    if (!user) { // 2. Cek user
       router.push("/login");
       return;
     }
-    if (!storageKey) return; // Tunggu storageKey siap
+    if (!storageKey) return; // 3. Tunggu key siap
 
-    const loadExamData = async () => {
+    const checkScheduleAndLoad = async () => {
       try {
-        setLoading(true)
-        const skemaId = user.skemaId || "ADS"
-        const unitsData = await mockGetUnitsForSkema(skemaId)
-        setUnits(unitsData)
+        setIsChecking(true);
+        setAuthError(null);
+        const status = await mockGetExamStatus(user.id);
 
-        // Hitung durasi total dari semua unit
-        const totalDurasiMenit = unitsData.reduce((sum, unit) => sum + (unit.durasiTeori || 15), 0)
-        const totalDurationInSeconds = totalDurasiMenit * 60
-        
-        // Ambil semua soal
-        const allSoalPromises = unitsData.map(unit => mockGetSoalForUnit(unit.id, "UJIAN_TEORI"))
-        const allSoalArrays = await Promise.all(allSoalPromises)
-        const combinedSoal = allSoalArrays.flat()
-        setSoal(combinedSoal)
-        
-        // Buat detail untuk layar Pre-Start
-        const details = unitsData.map((unit, index) => ({
-          ...unit,
-          soalCount: allSoalArrays[index].length
-        }))
-        setUnitDetails(details)
-
-        // --- INI LOGIKA PEMULIHAN (ROBUSTNESS) ---
-        const savedStateJSON = localStorage.getItem(storageKey)
-        
-        if (savedStateJSON) {
-          // Jika ada progres tersimpan
-          const savedState = JSON.parse(savedStateJSON)
-          setAnswers(savedState.answers || {})
-          setTimeLeft(savedState.timeLeft || totalDurationInSeconds)
-          setIsExamActive(true) // Langsung masuk ke ujian
-        } else {
-          // Jika tidak ada (ujian baru)
-          setAnswers({})
-          setTimeLeft(totalDurationInSeconds)
-          setIsExamActive(false) // Tampilkan layar Pre-Start
+        // 4. Cek Prasyarat Dasar
+        if (status.teori.status === "TERKUNCI") {
+          setAuthError("Anda belum memenuhi prasyarat (menyelesaikan Tryout) untuk ujian ini.");
+          return;
         }
+        if (status.teori.status === "MENUNGGU_JADWAL") {
+          setAuthError("Ujian Teori Anda belum dijadwalkan oleh Admin.");
+          return;
+        }
+
+        // 5. Cek Jadwal (Ini adalah *offline guard*)
+        const jadwal = status.teori.jadwal;
+        if (!jadwal) {
+          setAuthError("Jadwal ujian tidak ditemukan (Error: ST-JNF).");
+          return;
+        }
+
+        // 6. Cek Tanggal
+        const isToday = new Date().toDateString() === new Date(jadwal.tanggal).toDateString();
         
+        // (CATATAN: Di development, kita longgarkan cek tanggal ini)
+        if (!isToday) {
+          console.warn("DEV_MODE: Cek tanggal ujian diabaikan.");
+          // Jika ingin ketat di production, uncomment baris di bawah:
+          // setAuthError(`Ujian ini hanya bisa diakses pada ${new Date(jadwal.tanggal).toLocaleDateString("id-ID")}.`);
+          // return;
+        }
+
+        // --- Lolos Cek Keamanan ---
+        setAuthError(null);
+        // Panggil fungsi pemuat data yang sudah di-wrap useCallback
+        loadExamData(); 
+
       } catch (error) {
-        console.error("Error loading exam:", error)
+        console.error("Gagal cek status ujian:", error);
+        setAuthError("Gagal memverifikasi status ujian Anda.");
       } finally {
-        setLoading(false)
-        setIsRestored(true) // Tandai pemulihan selesai
+        setIsChecking(false);
       }
     }
-    
-    loadExamData()
 
-  }, [user, isAuthLoading, router, storageKey])
+    checkScheduleAndLoad();
+  }, [user, isAuthLoading, router, storageKey, loadExamData]); // Tambah loadExamData
 
 
-  // --- EFEK SAMPING: Menyimpan Progres ke localStorage ---
-
-  // Simpan jawaban setiap kali berubah (jika ujian aktif)
+  // Efek Samping: Simpan Jawaban (Tidak berubah, sudah benar)
   useEffect(() => {
     if (!isExamActive || !isRestored || !storageKey) return;
     try {
@@ -159,13 +206,12 @@ export default function TeoriExamRunPage() {
     } catch (e) { console.error("Gagal simpan jawaban:", e) }
   }, [answers, isExamActive, isRestored, storageKey])
 
-  // Simpan sisa waktu setiap kali berubah (jika ujian aktif)
+  // Efek Samping: Simpan Waktu (Tidak berubah, sudah benar)
   useEffect(() => {
     if (!isExamActive || !isRestored || !storageKey) return;
     try {
       const stateJSON = localStorage.getItem(storageKey) || "{}"
       const currentState = JSON.parse(stateJSON)
-      // Hanya simpan jika beda (efisiensi)
       if (currentState.timeLeft !== timeLeft) {
         currentState.timeLeft = timeLeft
         localStorage.setItem(storageKey, JSON.stringify(currentState))
@@ -174,39 +220,62 @@ export default function TeoriExamRunPage() {
   }, [timeLeft, isExamActive, isRestored, storageKey])
 
 
-  // --- Handlers ---
-
-  const handleStartExam = () => {
-    setIsExamActive(true)
-  }
-
+  // --- Handlers (Tidak berubah) ---
+  const handleStartExam = () => setIsExamActive(true)
   const handleAnswerChange = (value) => {
-    // Menggunakan soal.id sebagai kunci, BUKAN indeks
     const currentSoalId = soal[currentQuestionIndex]?.id;
     if (!currentSoalId) return;
     setAnswers((prev) => ({ ...prev, [currentSoalId]: value }))
   }
-
   const handleNextQuestion = () => {
-    if (currentQuestionIndex < soal.length - 1) {
-      setCurrentQuestionIndex((prev) => prev + 1)
-    }
+    if (currentQuestionIndex < soal.length - 1) setCurrentQuestionIndex((prev) => prev + 1)
   }
   const handlePreviousQuestion = () => {
-    if (currentQuestionIndex > 0) {
-      setCurrentQuestionIndex((prev) => prev + 1)
-    }
+    if (currentQuestionIndex > 0) setCurrentQuestionIndex((prev) => prev - 1)
   }
-
   const formatTime = (seconds) => {
     const mins = Math.floor(seconds / 60)
     const secs = seconds % 60
     return `${mins.toString().padStart(2, "0")}:${secs.toString().padStart(2, "0")}`
   }
+  // --- Batas Handlers ---
 
 
-  if (isAuthLoading || loading) {
+  if (isAuthLoading || isChecking) {
     return (
+      <MainLayout>
+        <div className="flex flex-col items-center justify-center h-full p-6">
+          <Loader2 className="w-12 h-12 animate-spin text-primary mb-4" />
+          <p className="text-muted-foreground">Memverifikasi jadwal ujian Anda...</p>
+        </div>
+      </MainLayout>
+    )
+  }
+
+  // Jika GAGAL cek keamanan
+  if (authError) {
+    return (
+      <MainLayout>
+        <div className="flex flex-col items-center justify-center h-full p-6">
+          <Alert variant="destructive" className="max-w-md">
+            <AlertCircle className="h-4 w-4" />
+            <AlertTitle>Akses Ditolak</AlertTitle>
+            <AlertDescription>{authError}</AlertDescription>
+          </Alert>
+          <Button asChild variant="outline" className="mt-4">
+            <Link href="/asesi/exams">
+              <Home className="w-4 h-4 mr-2" />
+              Kembali ke Halaman Ujian
+            </Link>
+          </Button>
+        </div>
+      </MainLayout>
+    )
+  }
+
+  // Tampilkan skeleton B HANYA jika data soal sedang dimuat
+  if (isLoadingData) {
+     return (
       <MainLayout>
         <div className="p-6 space-y-4">
           <Skeleton className="h-32 w-full" />
@@ -216,7 +285,7 @@ export default function TeoriExamRunPage() {
     )
   }
 
-  if ((!units || units.length === 0 || !soal || soal.length === 0) && !loading) {
+  if ((!units || units.length === 0 || !soal || soal.length === 0) && !isLoadingData) {
     return (
       <MainLayout>
         <div className="p-6">
@@ -238,7 +307,7 @@ export default function TeoriExamRunPage() {
     <MainLayout>
       <div className="p-6 space-y-6">
         {!isExamActive ? (
-          // Layar Pre-exam
+          // Layar Pre-exam (Tidak berubah)
           <Card className="max-w-2xl mx-auto">
             <CardHeader>
               <CardTitle>
@@ -287,7 +356,7 @@ export default function TeoriExamRunPage() {
           </Card>
 
         ) : (
-          // Layar Ujian Aktif
+          // Layar Ujian Aktif (Tidak berubah)
           <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
             <div className="lg:col-span-3 space-y-4">
               <Card>
@@ -322,7 +391,6 @@ export default function TeoriExamRunPage() {
                 <CardContent>
                   <Textarea
                     placeholder="Ketik jawaban esai Anda di sini..."
-                    // --- (PERBAIKAN: Gunakan soal.id sebagai kunci) ---
                     value={answers[currentSoal?.id] || ""} 
                     onChange={(e) => handleAnswerChange(e.target.value)}
                     className="min-h-40"
@@ -363,7 +431,6 @@ export default function TeoriExamRunPage() {
                       className={`w-full aspect-square flex items-center justify-center rounded text-xs font-medium transition-colors ${
                         currentQuestionIndex === idx
                           ? "bg-primary text-primary-foreground"
-                          // --- (PERBAIKAN: Cek jawaban pakai soal.id) ---
                           : answers[s.id] 
                             ? "bg-green-100 text-green-800 hover:bg-green-200"
                             : "bg-muted hover:bg-muted/80"
@@ -378,7 +445,7 @@ export default function TeoriExamRunPage() {
           </div>
         )}
 
-        {/* Dialog Konfirmasi */}
+        {/* Dialog Konfirmasi (Tidak berubah) */}
         <Dialog open={showConfirmSubmit} onOpenChange={setShowConfirmSubmit}>
           <DialogContent>
             <DialogHeader>
