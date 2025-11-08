@@ -320,9 +320,13 @@ const SkemaContentManager = ({ skemaId }) => {
             <DialogTitle>{unitForm.id ? "Edit Unit" : "Tambah Unit Baru"}</DialogTitle>
           </DialogHeader>
           <div className="grid gap-4 py-4">
+            <p className="ml-1 pd-0"><b>Unit ke : </b></p>
             <Input placeholder="Nomor Unit" value={unitForm.nomorUnit} onChange={(e) => setUnitForm({ ...unitForm, nomorUnit: e.target.value })} />
+            <p className="ml-1 pd-0"><b>Judul Unit : </b></p>
             <Input placeholder="Judul Unit" value={unitForm.judul} onChange={(e) => setUnitForm({ ...unitForm, judul: e.target.value })} />
+            <h4 className="ml-1 pd-0 h-4">Deskripsi : </h4>
             <Textarea placeholder="Deskripsi Unit" value={unitForm.deskripsi} onChange={(e) => setUnitForm({ ...unitForm, deskripsi: e.target.value })} />
+            <p className="ml-1 pd-0"><b>Durasi Ujian Teori (Menit) : </b></p>
             <Input type="number" placeholder="Durasi Ujian Teori (menit)" value={unitForm.durasiTeori} onChange={(e) => setUnitForm({ ...unitForm, durasiTeori: e.target.value })} />
           </div>
           <DialogFooter>

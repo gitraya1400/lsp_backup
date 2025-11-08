@@ -342,9 +342,9 @@ export default function TryoutPage() {
                   <Lock className="h-5 w-5 text-red-600" />
                   <AlertTitle className="text-red-800 font-semibold">Tryout Terkunci</AlertTitle>
                   <AlertDescription className="text-red-700">
-                    Anda harus menyelesaikan 100% materi pembelajaran sebelum dapat memulai tryout. Progress Anda saat ini: <span className="font-bold">{progress?.progressPembelajaran || 0}%</span>.
+                    Anda harus menyelesaikan 100% materi pembelajaran sebelum dapat memulai tryout. Progress Anda saat ini: <span className="font-bold">{progress?.progressPembelajaran || 0}%</span>
                   </AlertDescription>
-                  <Button asChild variant="link" className="p-0 h-auto text-red-700 mt-2">
+                  <Button asChild variant="link" className="p-1 h-auto text-red-800 mt-3 mb-2 ml-26">
                     <Link href="/asesi/learning">Kembali ke Pembelajaran</Link>
                   </Button>
                 </Alert>
@@ -357,7 +357,7 @@ export default function TryoutPage() {
                     Anda telah menyelesaikan tryout. Anda sekarang dapat melanjutkan ke Ujian Teori.
                   </AlertDescription>
                   <Button asChild variant="link" className="p-0 h-auto text-green-700 mt-2">
-                    <Link href="/asesi/exams">Lanjut ke Ujian</Link>
+                    <Link className= "outline border-gray pd-2 ml-19 mt-1 mb-1 "href="/asesi/exams">Lanjut ke Ujian</Link>
                   </Button>
                 </Alert>
               ) : (

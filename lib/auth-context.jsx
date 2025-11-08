@@ -51,29 +51,15 @@ export function AuthProvider({ children }) {
   }, []); // <-- Dependensi kosong artinya "jalan sekali saja saat app load"
 
   const login = useCallback(async (email, nama) => {
-    // State loading di sini adalah untuk FORM, biarkan saja
     setAuthState((prev) => ({ ...prev, loading: true, error: null }))
     try {
       const user = await mockLoginSSO(email, nama)
-
-      setAuthState((prev) => ({
-        ...prev,
-        user,
-        isLoggedIn: true,
-        loading: false,
-      }))
-      
-      // Simpan sesi (Persistensi)
+      setAuthState((prev) => ({ ...prev, user, isLoggedIn: true, loading: false }))
       localStorage.setItem("authUser", JSON.stringify(user))
       return user
-
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : "Login gagal"
-      setAuthState((prev) => ({
-        ...prev,
-        loading: false,
-        error: errorMessage,
-      }))
+      setAuthState((prev) => ({ ...prev, loading: false, error: errorMessage }))
       throw error
     }
   }, [])

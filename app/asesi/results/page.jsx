@@ -89,7 +89,7 @@ export default function ResultsPage() {
                 </div>
               )}
 
-              {hasil?.statusAkhir === "BELUM_KOMPETEN" && (
+              {hasil?.statusAkhir === "BELUM KOMPETEN" && (
                 <div className="mt-4 pt-4 border-t border-red-200">
                   <p className="text-sm text-red-700 mb-3">
                     Anda dinyatakan BELUM KOMPETEN. Silakan hubungi admin untuk info lebih lanjut.

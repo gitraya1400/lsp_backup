@@ -10,8 +10,7 @@ import { Textarea } from "@/components/ui/textarea"
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog"
 import { Skeleton } from "@/components/ui/skeleton"
-import { AlertCircle, Clock, Home, Loader2 } from "lucide-react"
-
+import { AlertCircle, Clock, Home, Loader2, MonitorOff } from "lucide-react"
 import { 
   mockGetSoalForUnit, 
   mockGetUnitsForSkema, 
@@ -43,6 +42,8 @@ export default function TeoriExamRunPage() {
   const [isExamActive, setIsExamActive] = useState(false)
   
   const [isRestored, setIsRestored] = useState(false)
+  //fullscreen
+  const [showFullscreenWarning, setShowFullscreenWarning] = useState(false);
 
   const storageKey = useMemo(() => {
     if (!user) return null
@@ -55,6 +56,22 @@ export default function TeoriExamRunPage() {
     }
   }, [storageKey])
 
+  // --- (FUNGSI BARU HELPER FULLSCREEN) ---
+  const openFullscreen = () => {
+    const elem = document.documentElement;
+    if (elem.requestFullscreen) {
+      elem.requestFullscreen().catch((err) => {
+        // Gagal otomatis, minta manual
+        console.warn(`Gagal masuk fullscreen: ${err.message}. Meminta aksi user.`);
+        setShowFullscreenWarning(true); // Tampilkan modal peringatan jika gagal
+      });
+    }
+  }
+  const closeFullscreen = () => {
+    if (document.fullscreenElement && document.exitFullscreen) {
+      document.exitFullscreen().catch(err => console.error("Gagal keluar fullscreen:", err));
+    }
+  }
   const handleSubmitExam = useCallback(async () => {
     if (!user) return;
     
@@ -86,6 +103,28 @@ export default function TeoriExamRunPage() {
     
     return () => clearInterval(timer)
   }, [isExamActive, isRestored, handleSubmitExam])
+
+// --- (EFEK SAMPING BARU: FULLSCREEN HANDLER) ---
+  useEffect(() => {
+    const handleFullscreenChange = () => {
+      // Cek jika user keluar fullscreen saat ujian masih aktif
+      if (!document.fullscreenElement && isExamActive) {
+        setIsExamActive(false); // Jeda ujian (timer berhenti)
+        setShowFullscreenWarning(true); // Tampilkan modal peringatan
+      }
+    };
+
+    if (isExamActive && isRestored) {
+      // Jika ujian dimulai (atau dilanjutkan), paksa fullscreen
+      openFullscreen();
+      document.addEventListener('fullscreenchange', handleFullscreenChange);
+    }
+
+    // Cleanup listener
+    return () => {
+      document.removeEventListener('fullscreenchange', handleFullscreenChange);
+    };
+  }, [isExamActive, isRestored]);
 
   // Ini diperlukan agar bisa jadi dependensi useEffect dengan aman
   const loadExamData = useCallback(async () => {

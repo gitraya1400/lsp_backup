@@ -16,10 +16,11 @@ import {
   mockGetProgressAsesi,
   mockMarkMateriViewed
 } from "@/lib/api-mock"
-import { ChevronDown, ChevronUp, CheckCircle2, Clock, Lock, Check } from "lucide-react"
+import { ChevronDown, ChevronUp, CheckCircle2, Clock, Lock, Check, BookOpen } from "lucide-react"
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible"
 import Link from "next/link" 
 import { Spinner } from "@/components/ui/spinner"
+import { Play } from "next/font/google"
 
 export default function LearningPage() {
   const { user, loading: isAuthLoading } = useAuth()
@@ -85,6 +86,40 @@ export default function LearningPage() {
     }
   }
 
+    // New: Complete current unit then open next unit (if ada)
+  const handleCompleteAndNext = async (unitIndex, unit) => {
+    // 1) selesaikan unit saat ini
+    try {
+      await handleMarkUnitCompleted(unit)
+    } catch (e) {
+      // jika gagal menyelesaikan, hentikan
+      return
+    }
+
+    // 2) buka materi untuk unit berikutnya dan expand
+    const nextUnit = units[unitIndex + 1]
+    if (!nextUnit) return // tidak ada unit berikutnya
+
+    try {
+      await loadMateri(nextUnit)
+      setExpandedUnits((prev) => {
+        const next = new Set(prev)
+        // tutup unit sekarang, buka berikutnya
+        next.delete(unit.id)
+        next.add(nextUnit.id)
+        return next
+      })
+
+      // Scroll ke unit berikutnya agar terlihat
+      setTimeout(() => {
+        document.getElementById(`unit-${nextUnit.id}`)?.scrollIntoView({ behavior: "smooth", block: "start" })
+      }, 150)
+    } catch (e) {
+      console.error("Gagal buka unit berikutnya:", e)
+    }
+  }
+
+
   const toggleUnitExpand = async (unit) => {
     await loadMateri(unit)
     setExpandedUnits((prev) => {
@@ -105,7 +140,7 @@ export default function LearningPage() {
     window.open(materi.urlKonten, "_blank");
     
     if (viewedMateri.has(materi.id)) {
-      return // Sudah dilihat, tidak perlu panggil API
+      return // review, tidak perlu panggil API
     }
 
     try {
@@ -156,11 +191,15 @@ export default function LearningPage() {
   const completedUnitIds = new Set(progress?.completedUnitIds || [])
   const progressPercentage = progress?.progressPembelajaran || 0
 
-  const isUnitLocked = (unitIndex) => {
-    if (unitIndex === 0) return false
-    const prevUnitId = units[unitIndex - 1]?.id
-    // Sekarang completedUnitIds sudah jadi Set, .has() aman
-    return !completedUnitIds.has(prevUnitId)
+ const isUnitLocked = (unitIndex) => {
+    if (!progress) return true;
+    // jika pra-asesmen belum selesai, kunci semua unit
+    if (progress.statusPraAsesmen !== "SELESAI") return true;
+
+    // setelah pra-asesmen selesai: buka unit pertama; unit i hanya terbuka jika unit i-1 sudah selesai
+    if (unitIndex === 0) return false;
+    const prevUnit = units[unitIndex - 1];
+    return !completedUnitIds.has(prevUnit?.id);
   }
 
   return (
@@ -178,7 +217,7 @@ export default function LearningPage() {
         <Alert>
           <Clock className="h-4 w-4" />
           <AlertDescription>
-            Silakan **buka semua materi** di setiap unit (tombol "Buka" akan berubah menjadi "Sudah Dilihat") 
+            Silahkan  buka semua materi di setiap unit (tombol "Buka" akan berubah menjadi "Review") 
             untuk mengaktifkan tombol "Selesaikan Unit Ini".
           </AlertDescription>
         </Alert>
@@ -212,7 +251,8 @@ export default function LearningPage() {
 
               return (
                 <Collapsible key={unit.id} open={isExpanded} onOpenChange={() => !isLocked && toggleUnitExpand(unit)}>
-                  <Card className={isLocked ? "opacity-60 bg-gray-50" : "bg-white"}>
+                    {/* sebuah kartu untuk expanded dan collapsed */}
+                    <Card id={`unit-${unit.id}`} className={isLocked ? "opacity-60 bg-gray-50" : "bg-white"}>
                     <CollapsibleTrigger asChild disabled={isLocked}>
                       <div className={isLocked ? "cursor-not-allowed" : "cursor-pointer"}>
                         <CardHeader className="py-4">
@@ -273,21 +313,24 @@ export default function LearningPage() {
                                     </div>
                                     
                                     <Button
-                                      variant={isMateriViewed ? "outline" : "ghost"}
+                                      variant="outline"
                                       size="sm"
                                       disabled={isLocked || isViewingThisMateri}
                                       onClick={() => handleViewMateri(m)}
-                                      className={`w-28 ${isMateriViewed ? "text-green-600 border-green-200" : ""}`}
+                                      className={`w-28 ${isMateriViewed ? "text-green-600 border-green-200" : "text-gray-700 border-gray-300 hover:text-gray-900 hover:border-gray-400"}`}
                                     >
                                       {isViewingThisMateri ? (
                                         <Spinner className="w-4 h-4" />
                                       ) : isMateriViewed ? (
                                         <>
                                           <Check className="w-4 h-4 mr-2" />
-                                          Sudah Dilihat
+                                          Review
                                         </>
                                       ) : (
-                                        "Buka"
+                                        <>
+                                         <BookOpen className="w-4 h-4 mr-2" />
+                                          Buka
+                                          </>
                                       )}
                                     </Button>
                                   </div>
@@ -296,16 +339,31 @@ export default function LearningPage() {
                             </div>
 
                             {!isLocked && !isCompleted && (
-                              <Button
-                                onClick={() => handleMarkUnitCompleted(unit)}
-                                disabled={saving || !allMateriViewed} 
-                                className="w-full mt-4"
-                                title={!allMateriViewed ? "Harap buka semua materi di unit ini terlebih dahulu" : "Selesaikan Unit"}
-                              >
-                                {saving ? <Spinner className="w-4 h-4 mr-2" /> : "Selesaikan Unit Ini"}
-                              </Button>
-                            )}
+                              <>
+                                <Button
+                                  onClick={() => handleMarkUnitCompleted(unit)}
+                                  disabled={saving || !allMateriViewed} 
+                                  className="w-full mt-4"
+                                  title={!allMateriViewed ? "Harap buka semua materi di unit ini terlebih dahulu" : "Selesaikan Unit"}
+                                >
+                                  {saving ? <Spinner className="w-4 h-4 mr-2" /> : "Selesaikan Unit Ini"}
+                                </Button>
 
+                                {/* Tombol tambahan: Lanjut ke unit berikutnya (hanya tampil ketika tombol Selesaikan aktif) */}
+                                { /* Tampilkan hanya jika bukan unit terakhir */ }
+                                { (idx < (units.length - 1)) && (
+                                  <Button
+                                    onClick={() => handleCompleteAndNext(idx, unit)}
+                                    disabled={saving || !allMateriViewed}
+                                    variant="ghost"
+                                    className="w-full mt-2 text-sm"
+                                    title="Selesaikan unit ini lalu lanjut ke unit berikutnya"
+                                  >
+                                    Lanjut ke unit berikutnya
+                                  </Button>
+                                )}
+                              </>
+                            )}
                             {isCompleted && (
                               <div className="flex items-center gap-2 p-3 bg-green-50 rounded-lg text-green-700 text-sm">
                                 <CheckCircle2 className="w-4 h-4" />
