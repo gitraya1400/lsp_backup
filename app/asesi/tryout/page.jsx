@@ -6,80 +6,88 @@ import { useAuth } from "@/lib/auth-context";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import { Skeleton } from "@/components/ui/skeleton";
 import { 
   mockGetUnitsForSkema, 
-  mockGetSoalTryoutGabungan, // <-- Ganti API
+  mockGetSoalTryoutGabungan, 
   mockSubmitTryout, 
   mockGetProgressAsesi 
 } from "@/lib/api-mock";
-import { Lock, Play, Loader2, Check, Book, Clock, CheckCircle2 } from "lucide-react";
+import { Lock, Play, Loader2, Check, Book, Clock, CheckCircle2, MonitorOff } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { formatTime } from "@/lib/utils"; // <-- Import formatTime
+import { formatTime } from "@/lib/utils"; 
 
-// --- Logika Robustness ---
-const TRYOUT_DURATION_SECONDS = 90 * 60; // 90 menit
+const TRYOUT_DURATION_SECONDS = 90 * 60; 
 
 const getTryoutStorageKey = (userId, skemaId) => {
   if (!userId || !skemaId) return null;
   return `tryout_progress_${userId}_${skemaId}`;
 };
-// --- Batas Logika Robustness ---
 
 export default function TryoutPage() {
   const { user, loading: isAuthLoading } = useAuth();
   const router = useRouter();
 
-  // State untuk data
   const [units, setUnits] = useState([]);
   const [soalList, setSoalList] = useState([]);
   const [progress, setProgress] = useState(null);
 
-  // State untuk UI
   const [loading, setLoading] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showConfirmSubmit, setShowConfirmSubmit] = useState(false);
-  const [isRestored, setIsRestored] = useState(false); // Flag pemulihan
+  const [isRestored, setIsRestored] = useState(false); 
 
-  // State untuk Ujian (dibuat robust)
   const [isStarted, setIsStarted] = useState(false);
   const [currentSoalIndex, setCurrentSoalIndex] = useState(0);
-  const [answers, setAnswers] = useState({}); // { "soalId": "jawaban" }
+  const [answers, setAnswers] = useState({}); 
   const [timeLeft, setTimeLeft] = useState(TRYOUT_DURATION_SECONDS);
+  
+  const [showFullscreenWarning, setShowFullscreenWarning] = useState(false);
 
-  // Kunci unik untuk localStorage
   const storageKey = useMemo(() => {
     return getTryoutStorageKey(user?.id, user?.skemaId);
   }, [user]);
 
-  // Cek prasyarat
   const canStartTryout = progress?.progressPembelajaran === 100;
 
-  // --- Logika Inti ---
-
-  // Fungsi untuk membersihkan localStorage
   const clearTryoutState = useCallback(() => {
     if (storageKey) {
       localStorage.removeItem(storageKey);
     }
   }, [storageKey]);
 
-  // Fungsi Submit Ujian
+  const openFullscreen = () => {
+    const elem = document.documentElement;
+    if (elem.requestFullscreen) {
+      elem.requestFullscreen().catch((err) => {
+        console.warn(`Gagal masuk fullscreen: ${err.message}. Meminta aksi user.`);
+        setShowFullscreenWarning(true); 
+      });
+    }
+  }
+  
+  const closeFullscreen = () => {
+    if (document.fullscreenElement && document.exitFullscreen) {
+      document.exitFullscreen().catch(err => console.error("Gagal keluar fullscreen:", err));
+    }
+  }
+
   const handleSubmit = useCallback(async () => {
     if (!user) return;
     
-    // Set status tidak aktif agar timer berhenti
     setIsStarted(false); 
     setIsSubmitting(true);
+    closeFullscreen();
     
     try {
       await mockSubmitTryout(user.id, answers);
-      clearTryoutState(); // Bersihkan storage
+      clearTryoutState(); 
 
-      // Update progress di client-side
       setProgress((prev) => ({ ...prev, tryoutSelesai: true }));
-      setIsStarted(false); // Kembali ke layar pre-start (yang kini akan terkunci)
+      setIsStarted(false); 
+      setShowConfirmSubmit(false);
 
       alert("Tryout berhasil diselesaikan! Anda sekarang bisa melanjutkan ke Ujian Teori.");
       router.push("/asesi/dashboard");
@@ -91,14 +99,13 @@ export default function TryoutPage() {
     }
   }, [user, answers, router, clearTryoutState]);
   
-  // Efek Samping: Memuat data prasyarat dan memulihkan progres
   useEffect(() => {
-    if (isAuthLoading) return; // Tunggu auth selesai
+    if (isAuthLoading) return; 
     if (!user) {
       router.push("/login");
       return;
     }
-    if (!storageKey) return; // Tunggu user dan skema siap
+    if (!storageKey) return; 
 
     const loadPrerequisitesAndRestore = async () => {
       try {
@@ -106,38 +113,36 @@ export default function TryoutPage() {
         const [progressData, unitsData, soalData] = await Promise.all([
           mockGetProgressAsesi(user.id),
           mockGetUnitsForSkema(user.skemaId),
-          mockGetSoalTryoutGabungan(user.skemaId) // <-- Panggil API baru
+          mockGetSoalTryoutGabungan(user.skemaId) 
         ]);
         
         setProgress(progressData);
         setUnits(unitsData);
         setSoalList(soalData);
 
-        // Logika Pemulihan (Robustness)
         const savedStateJSON = localStorage.getItem(storageKey);
         if (savedStateJSON) {
           const savedState = JSON.parse(savedStateJSON);
           setAnswers(savedState.answers || {});
           setTimeLeft(savedState.timeLeft || TRYOUT_DURATION_SECONDS);
-          setIsStarted(true); // Langsung masuk ke tryout
+          setIsStarted(true); 
         } else {
           setAnswers({});
           setTimeLeft(TRYOUT_DURATION_SECONDS);
-          setIsStarted(false); // Tampilkan layar pre-start
+          setIsStarted(false); 
         }
 
       } catch (error) {
         console.error("Error loading prerequisites:", error);
       } finally {
         setLoading(false);
-        setIsRestored(true); // Tandai pemulihan selesai
+        setIsRestored(true); 
       }
     };
 
     loadPrerequisitesAndRestore();
   }, [user, isAuthLoading, router, storageKey]);
 
-  // Efek Samping: Timer
   useEffect(() => {
     if (!isStarted || !isRestored) return;
 
@@ -145,7 +150,7 @@ export default function TryoutPage() {
       setTimeLeft((prev) => {
         if (prev <= 1) {
           clearInterval(timer);
-          handleSubmit(); // Auto-submit
+          handleSubmit(); 
           return 0;
         }
         return prev - 1;
@@ -153,9 +158,26 @@ export default function TryoutPage() {
     }, 1000);
 
     return () => clearInterval(timer);
-  }, [isStarted, isRestored, handleSubmit]); // Dependensi ke handleSubmit (useCallback)
+  }, [isStarted, isRestored, handleSubmit]); 
+  
+  useEffect(() => {
+    const handleFullscreenChange = () => {
+      if (!document.fullscreenElement && isStarted) {
+        setIsStarted(false); 
+        setShowFullscreenWarning(true); 
+      }
+    };
 
-  // Efek Samping: Simpan jawaban ke localStorage
+    if (isStarted && isRestored) {
+      openFullscreen();
+      document.addEventListener('fullscreenchange', handleFullscreenChange);
+    }
+
+    return () => {
+      document.removeEventListener('fullscreenchange', handleFullscreenChange);
+    };
+  }, [isStarted, isRestored]);
+
   useEffect(() => {
     if (!isStarted || !isRestored || !storageKey) return;
     try {
@@ -166,7 +188,6 @@ export default function TryoutPage() {
     } catch (e) { console.error("Gagal simpan jawaban tryout:", e) }
   }, [answers, isStarted, isRestored, storageKey]);
 
-  // Efek Samping: Simpan sisa waktu ke localStorage
   useEffect(() => {
     if (!isStarted || !isRestored || !storageKey) return;
     try {
@@ -179,7 +200,6 @@ export default function TryoutPage() {
     } catch (e) { console.error("Gagal simpan waktu tryout:", e) }
   }, [timeLeft, isStarted, isRestored, storageKey]);
 
-  // --- Handlers ---
 
   const handleStartTryout = () => {
     setIsStarted(true);
@@ -189,6 +209,18 @@ export default function TryoutPage() {
     setAnswers((prev) => ({ ...prev, [soalId]: value }));
   };
   
+  const handleNextQuestion = () => {
+    if (currentSoalIndex < soalList.length - 1) {
+      setCurrentSoalIndex((prev) => prev + 1);
+    }
+  };
+
+  const handlePreviousQuestion = () => {
+    if (currentSoalIndex > 0) {
+      setCurrentSoalIndex((prev) => prev - 1);
+    }
+  };
+
   const currentSoal = soalList[currentSoalIndex];
   
   if (loading || isAuthLoading || !progress) {
@@ -203,125 +235,182 @@ export default function TryoutPage() {
     );
   }
 
-  // --- Tampilan Ujian Aktif ---
   if (isStarted) {
     if (!currentSoal) {
        return (
-         <MainLayout>
-           <div className="p-6">
-             <Alert variant="destructive">
-               <AlertCircle className="h-4 w-4" />
-               <AlertTitle>Error</AlertTitle>
-               <AlertDescription>Soal tryout tidak dapat dimuat.</AlertDescription>
-             </Alert>
-           </div>
-         </MainLayout>
+         <div className="flex items-center justify-center min-h-screen p-6 bg-gray-100">
+           <Alert variant="destructive">
+             <AlertCircle className="h-4 w-4" />
+             <AlertTitle>Error</AlertTitle>
+             <AlertDescription>Soal tryout tidak dapat dimuat.</AlertDescription>
+           </Alert>
+         </div>
        )
     }
     
     const answeredCount = Object.values(answers).filter(Boolean).length;
+    const areAllAnswered = answeredCount === soalList.length;
 
     return (
-      <MainLayout>
-        <div className="p-6">
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-            {/* --- KOLOM KIRI (SOAL) --- */}
-            <div className="lg:col-span-2 space-y-4">
-              <Card>
-                <CardContent className="pt-6">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <h3 className="font-medium">
-                        Tryout Skema {user?.skemaId}
-                      </h3>
-                      <p className="text-sm text-muted-foreground mt-1">
-                        Soal {currentSoalIndex + 1} dari {soalList.length}
-                      </p>
-                    </div>
-                    <div className={`text-2xl font-bold ${timeLeft < 300 ? "text-destructive" : ""}`}>
-                      <Clock className="w-5 h-5 inline mr-2" />
-                      {formatTime(timeLeft)}
-                    </div>
+      <div className="bg-gray-100 min-h-screen p-6">
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          <div className="lg:col-span-2 space-y-4">
+            <Card>
+              <CardContent className="pt-6">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <h3 className="font-medium">
+                      Tryout Skema {user?.skemaId}
+                    </h3>
+                    <p className="text-sm text-muted-foreground mt-1">
+                      Soal {currentSoalIndex + 1} dari {soalList.length}
+                    </p>
                   </div>
-                </CardContent>
-              </Card>
-              
-              <Card>
-                <CardHeader>
-                  <CardTitle className="text-xl">
-                    Soal {currentSoalIndex + 1}
-                  </CardTitle>
-                  <CardDescription className="pt-2 text-base text-gray-800">{currentSoal.teks}</CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <textarea 
-                    className="w-full min-h-[400px] p-3 border rounded-md" 
-                    placeholder="Tulis jawaban esai Anda di sini..." 
-                    value={answers[currentSoal.id] || ""} 
-                    onChange={(e) => handleAnswerChange(currentSoal.id, e.target.value)} 
-                  />
-                </CardContent>
-              </Card>
-            </div>
-
-            {/* --- KOLOM KANAN (NAVIGASI) --- */}
-            <div className="lg:col-span-1 space-y-6">
-              <Card className="lg:sticky lg:top-6">
-                <CardHeader>
-                  <CardTitle>Daftar Soal ({answeredCount}/{soalList.length})</CardTitle>
-                </CardHeader>
-                <CardContent className="grid grid-cols-5 gap-2">
-                  {soalList.map((soal, index) => {
-                    const isCurrent = currentSoalIndex === index;
-                    const isAnswered = answers[soal.id];
-
-                    let variant = "secondary"; // Belum diisi
-                    if (isAnswered) variant = "outline"; // Udah diisi
-                    if (isCurrent) variant = "default"; // Lagi aktif
-
-                    return (
-                      <Button
-                        key={soal.id}
-                        variant={variant}
-                        className={`
-                          w-full h-12 text-lg
-                          ${isAnswered && !isCurrent ? "border-green-600 text-green-700 hover:bg-green-50" : ""}
-                        `}
-                        onClick={() => setCurrentSoalIndex(index)}
-                      >
-                        {index + 1}
-                      </Button>
-                    );
-                  })}
-                </CardContent>
-                <CardFooter>
-                  <Button 
-                    onClick={() => {
-                      const answeredCount = Object.values(answers).filter(Boolean).length;
-                      if (answeredCount < soalList.length) {
-                        if (!confirm(`Anda baru mengerjakan ${answeredCount} dari ${soalList.length} soal. Tetap selesaikan tryout?`)) {
-                          return;
-                        }
-                      }
-                      // Jika sudah semua atau dikonfirmasi, baru panggil handleSubmit
-                      handleSubmit();
-                    }} 
-                    disabled={isSubmitting} 
-                    className="w-full bg-green-600 hover:bg-green-700"
-                  >
-                    {isSubmitting ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Check className="w-4 h-4 mr-2" />}
-                    Selesaikan Tryout
-                  </Button>
-                </CardFooter>
-              </Card>
+                  <div className={`text-2xl font-bold ${timeLeft < 300 ? "text-destructive" : ""}`}>
+                    <Clock className="w-5 h-5 inline mr-2" />
+                    {formatTime(timeLeft)}
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+            
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-xl">
+                  Soal {currentSoalIndex + 1}
+                </CardTitle>
+                <CardDescription className="pt-2 text-base text-gray-800">{currentSoal.teks}</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <textarea 
+                  className="w-full min-h-[400px] p-3 border rounded-md" 
+                  placeholder="Tulis jawaban esai Anda di sini..." 
+                  value={answers[currentSoal.id] || ""} 
+                  onChange={(e) => handleAnswerChange(currentSoal.id, e.target.value)} 
+                />
+              </CardContent>
+            </Card>
+            
+            <div className="flex gap-3">
+              <Button 
+                variant="outline" 
+                onClick={handlePreviousQuestion} 
+                disabled={currentSoalIndex === 0}
+              >
+                Sebelumnya
+              </Button>
+              <Button
+                variant="outline"
+                onClick={handleNextQuestion}
+                disabled={currentSoalIndex === soalList.length - 1}
+                className="flex-1"
+              >
+                Selanjutnya
+              </Button>
             </div>
           </div>
+
+          <div className="lg:col-span-1 space-y-6">
+            <Card className="lg:sticky lg:top-6">
+              <CardHeader>
+                <CardTitle>Daftar Soal ({answeredCount}/{soalList.length})</CardTitle>
+              </CardHeader>
+              <CardContent className="grid grid-cols-7 gap-2">
+                {soalList.map((soal, index) => {
+                  const isCurrent = currentSoalIndex === index;
+                  const isAnswered = !!answers[soal.id];
+
+                  const baseClasses = "w-full aspect-square flex items-center justify-center rounded text-xs font-medium transition-colors";
+                  let variantClasses = "";
+
+                  if (isCurrent) {
+                    variantClasses = "bg-primary text-primary-foreground";
+                  } else if (isAnswered) {
+                    variantClasses = "bg-green-100 text-green-800 hover:bg-green-200";
+                  } else {
+                    variantClasses = "bg-muted hover:bg-muted/80";
+                  }
+
+                  return (
+                    <button
+                      key={soal.id}
+                      className={`${baseClasses} ${variantClasses}`}
+                      onClick={() => setCurrentSoalIndex(index)}
+                    >
+                      {index + 1}
+                    </button>
+                  );
+                })}
+              </CardContent>
+              <CardFooter>
+                <Button 
+                  onClick={() => setShowConfirmSubmit(true)}
+                  disabled={isSubmitting || !areAllAnswered}
+                  title={!areAllAnswered ? "Harap jawab semua soal terlebih dahulu" : "Selesaikan Tryout"}
+                  className="w-full bg-green-600 hover:bg-green-700"
+                >
+                  {isSubmitting ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Check className="w-4 h-4 mr-2" />}
+                  Selesaikan Tryout
+                </Button>
+              </CardFooter>
+            </Card>
+          </div>
         </div>
-      </MainLayout>
+
+        <Dialog open={showConfirmSubmit} onOpenChange={setShowConfirmSubmit}>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Konfirmasi Selesaikan Tryout</DialogTitle>
+              <DialogDescription>
+                Anda telah menjawab {answeredCount} dari {soalList.length} soal. Yakin ingin menyelesaikan tryout?
+              </DialogDescription>
+            </DialogHeader>
+            <DialogFooter>
+              <Button variant="outline" onClick={() => setShowConfirmSubmit(false)}>
+                Lanjut Menjawab
+              </Button>
+              <Button
+                onClick={() => {
+                  setShowConfirmSubmit(false)
+                  handleSubmit()
+                }}
+                disabled={isSubmitting}
+              >
+                {isSubmitting ? "Menyimpan..." : "Ya, Selesaikan"}
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+        
+        <Dialog open={showFullscreenWarning} onOpenChange={setShowFullscreenWarning}>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle className="flex items-center gap-2">
+                <MonitorOff className="w-5 h-5 text-destructive" />
+                Mode Fullscreen Diperlukan
+              </DialogTitle>
+              <DialogDescription>
+                Anda (atau sistem) telah keluar dari mode fullscreen. Untuk melanjutkan tryout, Anda harus masuk kembali ke mode fullscreen.
+              </DialogDescription>
+            </DialogHeader>
+            <DialogFooter>
+              <Button 
+                className="w-full"
+                onClick={() => {
+                  setShowFullscreenWarning(false);
+                  setIsStarted(true); 
+                }}
+              >
+                Masuk Fullscreen dan Lanjutkan
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+
+      </div>
     );
   }
 
-  // --- Tampilan Pre-Start (Default) ---
   return (
     <MainLayout>
       <div className="p-6 space-y-4">
@@ -337,7 +426,6 @@ export default function TryoutPage() {
 
             <CardContent className="space-y-6">
               {!canStartTryout ? (
-                // TAMPILAN TERKUNCI
                 <Alert variant="destructive" className="bg-red-50 border-red-200">
                   <Lock className="h-5 w-5 text-red-600" />
                   <AlertTitle className="text-red-800 font-semibold">Tryout Terkunci</AlertTitle>
@@ -349,7 +437,6 @@ export default function TryoutPage() {
                   </Button>
                 </Alert>
               ) : progress.tryoutSelesai ? (
-                // TAMPILAN SUDAH SELESAI
                 <Alert className="bg-green-50 border-green-200">
                   <CheckCircle2 className="h-5 w-5 text-green-600" />
                   <AlertTitle className="text-green-800 font-semibold">Tryout Selesai</AlertTitle>
@@ -361,7 +448,6 @@ export default function TryoutPage() {
                   </Button>
                 </Alert>
               ) : (
-                // TAMPILAN SIAP MULAI
                 <>
                   <div className="text-center text-muted-foreground">Harap baca instruksi berikut sebelum memulai tryout:</div>
 
@@ -391,6 +477,13 @@ export default function TryoutPage() {
                       </span>
                     </li>
                   </ul>
+                  
+                  <Alert>
+                    <AlertCircle className="h-4 w-4" />
+                    <AlertDescription>
+                      Tryout akan dimulai dalam mode fullscreen. Pastikan Anda siap.
+                    </AlertDescription>
+                  </Alert>
 
                   <Button onClick={handleStartTryout} disabled={loading} size="lg" className="w-full text-base h-11">
                     <Play className="w-5 h-5 mr-2" />

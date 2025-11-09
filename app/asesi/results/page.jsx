@@ -77,21 +77,19 @@ export default function ResultsPage() {
                 </div>
               </div>
 
+              {/* --- (BLOK INI TELAH DIREVISI) --- */}
               {hasil?.statusAkhir === "KOMPETEN" && (
                 <div className="mt-4 pt-4 border-t border-green-200">
-                  <p className="text-sm text-green-700 mb-3">
-                    Selamat! Anda dinyatakan KOMPETEN dan berhak mendapatkan sertifikat.
+                  <p className="text-sm text-green-700">
+                    Selamat! Anda telah dinyatakan KOMPETEN berdasarkan seluruh rangkaian asesmen.
                   </p>
-                  <Button className="bg-green-600 hover:bg-green-700">
-                    <Download className="w-4 h-4 mr-2" />
-                    Download Sertifikat
-                  </Button>
                 </div>
               )}
+              {/* --- (BATAS REVISI) --- */}
 
               {hasil?.statusAkhir === "BELUM KOMPETEN" && (
                 <div className="mt-4 pt-4 border-t border-red-200">
-                  <p className="text-sm text-red-700 mb-3">
+                  <p className="text-sm text-red-700">
                     Anda dinyatakan BELUM KOMPETEN. Silakan hubungi admin untuk info lebih lanjut.
                   </p>
                 </div>
@@ -108,7 +106,6 @@ export default function ResultsPage() {
           </CardHeader>
           <CardContent className="space-y-4">
             
-            {/* 1. Ujian Praktikum (Tunggal) */}
             <Card className="border-2">
               <CardHeader className="flex flex-row items-center gap-4 space-y-0">
                 <NotebookText className="w-8 h-8 text-blue-600" />
@@ -122,7 +119,6 @@ export default function ResultsPage() {
               </CardContent>
             </Card>
 
-            {/* 2. Unjuk Diri (Tunggal) */}
             <Card className="border-2">
               <CardHeader className="flex flex-row items-center gap-4 space-y-0">
                  <Mic className="w-8 h-8 text-purple-600" />
@@ -136,7 +132,6 @@ export default function ResultsPage() {
               </CardContent>
             </Card>
 
-            {/* 3. Ujian Teori (Rincian per Unit) */}
             <Card className="border-2">
               <CardHeader className="flex flex-row items-center gap-4 space-y-0">
                 <Brain className="w-8 h-8 text-orange-600" />
@@ -156,7 +151,6 @@ export default function ResultsPage() {
                     </div>
                  )}
                  
-                 {/* Rincian Per Unit */}
                  <div className="space-y-2 max-h-60 overflow-y-auto pr-2">
                     <p className="text-sm font-medium mb-2">Rincian Kelulusan per Unit (Minimal 75% Soal "SESUAI"):</p>
                     {loading ? <Skeleton className="h-20 w-full" /> : 
