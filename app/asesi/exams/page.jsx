@@ -188,10 +188,8 @@ export default function ExamsPage() {
     <MainLayout>
       <div className="p-6 space-y-6">
         <div>
-          <h1 className="text-3xl font-bold">Ujian Sertifikasi</h1>
-          <p className="text-muted-foreground mt-1">
-            Ikuti ujian teori, praktikum, dan unjuk diri sesuai jadwal dan prasyarat.
-          </p>
+          <h1 className="text-3xl font-bold">Ujian Kompetensi</h1>
+
         </div>
 
         <Tabs defaultValue="teori" className="w-full">
@@ -283,11 +281,11 @@ export default function ExamsPage() {
                           </Alert>
                         ) : (
                           <Alert>
-                            <AlertCircle className="h-4 w-4" />
-                            <AlertTitle>Batas Waktu Belum Ditentukan</AlertTitle>
-                            <AlertDescription>
-                              Batas waktu pengumpulan akan muncul setelah sesi Unjuk Diri Anda dijadwalkan oleh admin.
-                            </AlertDescription>
+                             <AlertCircle className="h-4 w-4" />
+                             <AlertTitle>Batas Waktu Belum Ditentukan</AlertTitle>
+                             <AlertDescription>
+                               Batas waktu pengumpulan akan muncul setelah sesi Unjuk Diri Anda dijadwalkan oleh admin.
+                             </AlertDescription>
                           </Alert>
                         )}
 
@@ -310,7 +308,7 @@ export default function ExamsPage() {
                                 {soalPraktikum.filePendukung.map((file) => (
                                   <a 
                                     key={file.id} 
-                                    href={file.url} 
+                                    href={file.url} // <-- LINK BARU YANG AMAN
                                     target="_blank" 
                                     rel="noopener noreferrer"
                                     className="flex items-center justify-between p-3 border rounded-lg hover:bg-muted/50"
