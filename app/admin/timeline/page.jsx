@@ -3,11 +3,10 @@
 import React, { useEffect, useState, useMemo } from "react"
 import { MainLayout } from "@/components/layout/main-layout"
 import { useAuth } from "@/lib/auth-context"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+import { Card, CardContent } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
-import { Calendar as CalendarIcon, PlusCircle, AlertCircle, Clock, Users, Video, Info, UserCheck, Edit2, User as UserIcon, Presentation } from "lucide-react"
-// --- (PERBAIKAN 1: Impor CalendarDayButton) ---
+import { Calendar as CalendarIcon, PlusCircle, AlertCircle, Clock, Users, Video, Info, UserCheck, Edit2, User as UserIcon } from "lucide-react"
 import { Calendar, CalendarDayButton } from "@/components/ui/calendar"
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog"
@@ -25,62 +24,56 @@ import {
 import { Skeleton } from "@/components/ui/skeleton"
 import { useRouter } from "next/navigation"
 import { Textarea } from "@/components/ui/textarea"
-import { cn } from "@/lib/utils" 
-
-// ===============================================================
-// --- (PERBAIKAN 2: Komponen Kalender Kustom) ---
-// ===============================================================
+import { cn } from "@/lib/utils"
 
 const EventTag = ({ event }) => {
-  let Icon = Info;
-  let colors = "bg-blue-500 text-white";
-  let label = event.type || "Info";
+  let Icon = Info
+  let colors = "bg-blue-500 text-white"
+  let label = event.type || "Info"
 
   switch (event.type) {
     case "announcement":
-      Icon = AlertCircle;
-      colors = "bg-yellow-500 text-white";
-      label = "Info";
-      break;
+      Icon = AlertCircle
+      colors = "bg-yellow-500 text-white"
+      label = "Info"
+      break
     case "exam":
-      Icon = UserCheck;
-      colors = "bg-purple-600 text-white";
-      label = "Ujian";
-      break;
-    case "event": 
-      Icon = Video;
-      colors = "bg-blue-500 text-white";
-      label = "Sesi";
-      break;
+      Icon = UserCheck
+      colors = "bg-purple-600 text-white"
+      label = "Ujian"
+      break
+    case "event":
+      Icon = Video
+      colors = "bg-blue-500 text-white"
+      label = "Sesi"
+      break
     default:
-      Icon = Info;
-      break;
+      Icon = Info
+      break
   }
   
-  const titleWord = event.title.split(' ').find(word => word.length > 2 && !word.startsWith('[')) || label;
+  const titleWord = event.title.split(' ').find(word => word.length > 2 && !word.startsWith('[')) || label
 
   return (
     <div className={cn("event-tag", colors)}>
       <Icon className="w-3 h-3" />
       <span className="truncate">{titleWord.length > 10 ? label : titleWord}</span>
     </div>
-  );
-};
+  )
+}
 
-// --- Ganti DayButton jadi CalendarDayButton ---
 const CustomDayButton = ({ linimasa = [], ...props }) => {
-  const day = props.day;
+  const day = props.day
   const eventsForDay = useMemo(() => {
     if (!Array.isArray(linimasa)) {
-      return [];
+      return []
     }
     return linimasa.filter(
       (event) => event.date === day.date.toDateString()
-    );
-  }, [linimasa, day.date]);
+    )
+  }, [linimasa, day.date])
 
   return (
-    // --- Ganti dari <DayButton> ke <CalendarDayButton> ---
     <CalendarDayButton {...props}>
       {props.children}
       {eventsForDay.length > 0 && (
@@ -96,16 +89,9 @@ const CustomDayButton = ({ linimasa = [], ...props }) => {
         </div>
       )}
     </CalendarDayButton>
-    // --- Batas Ganti ---
-  );
-};
+  )
+}
 
-// ===============================================================
-// --- BATAS KODE BARU ---
-// ===============================================================
-
-
-// Modal 1: CreateSesiModal (Tidak Berubah)
 function CreateSesiModal({ skemaOptions, onSesiCreated }) {
   const [open, setOpen] = useState(false)
   const [skemaId, setSkemaId] = useState("")
@@ -138,7 +124,6 @@ function CreateSesiModal({ skemaOptions, onSesiCreated }) {
       const newSesi = await mockCreateSesiUjianOffline(sesiData)
       onSesiCreated(newSesi)
       setOpen(false)
-      // Reset form
       setSkemaId("")
       setTipeUjian("")
       setTanggal(null)
@@ -240,7 +225,6 @@ function CreateSesiModal({ skemaOptions, onSesiCreated }) {
   )
 }
 
-// Modal 2: CreateLinimasaModal (Tidak Berubah, sudah fix)
 function CreateLinimasaModal({ skemaOptions, asesorList, onEventCreated }) {
   const [open, setOpen] = useState(false)
   const [skemaId, setSkemaId] = useState("UMUM")
@@ -266,7 +250,7 @@ function CreateLinimasaModal({ skemaOptions, asesorList, onEventCreated }) {
     try {
       const finalPemateriId = (tipe === "PEMBELAJARAN" && pemateriAsesorId !== "NONE" && pemateriAsesorId !== "") 
         ? pemateriAsesorId 
-        : "";
+        : ""
 
       const eventData = {
         skemaId,
@@ -281,10 +265,9 @@ function CreateLinimasaModal({ skemaOptions, asesorList, onEventCreated }) {
       const newEvent = await mockCreateLinimasa(eventData)
       onEventCreated(newEvent)
       setOpen(false)
-      // Reset form
-      setSkemaId("UMUM"); setTipe("PEMBELAJARAN"); setJudul(""); setDeskripsi("");
-      setTanggal(null); setWaktu(""); setUrlZoom("");
-      setPemateriAsesorId(""); 
+      setSkemaId("UMUM"); setTipe("PEMBELAJARAN"); setJudul(""); setDeskripsi("")
+      setTanggal(null); setWaktu(""); setUrlZoom("")
+      setPemateriAsesorId("") 
     } catch (err) {
       setError(err.message || "Gagal membuat kegiatan.")
     } finally {
@@ -401,35 +384,34 @@ function CreateLinimasaModal({ skemaOptions, asesorList, onEventCreated }) {
   )
 }
 
-// AdminEventCard (Tidak Berubah)
 const AdminEventCard = ({ event, onEdit }) => {
-  const router = useRouter();
+  const router = useRouter()
   
-  let Icon = Info;
-  let colors = "bg-blue-50 border-blue-200 text-blue-800";
-  let skemaLabel = event.skemaId === "UMUM" ? "Semua Skema" : event.skemaId;
+  let Icon = Info
+  let colors = "bg-blue-50 border-blue-200 text-blue-800"
+  let skemaLabel = event.skemaId === "UMUM" ? "Semua Skema" : event.skemaId
 
   if (event.type === "announcement") {
-    Icon = Info;
-    colors = "bg-yellow-50 border-yellow-200 text-yellow-800";
+    Icon = Info
+    colors = "bg-yellow-50 border-yellow-200 text-yellow-800"
   } else if (event.type === "event") {
-    Icon = Video;
-    colors = "bg-blue-50 border-blue-200 text-blue-800";
+    Icon = Video
+    colors = "bg-blue-50 border-blue-200 text-blue-800"
   } else if (event.type === "exam") {
-    Icon = UserCheck;
-    colors = "bg-purple-50 border-purple-200 text-purple-800";
+    Icon = UserCheck
+    colors = "bg-purple-50 border-purple-200 text-purple-800"
   }
 
   return (
     <div className={`p-4 rounded-lg border ${colors} flex items-start gap-4`}>
       <Icon className="w-5 h-5 mt-1 flex-shrink-0" />
       <div className="flex-1">
-        <span className={`text-xs font-semibold px-2 py-0.5 rounded-full ${colors} border border-current`}>
+                <span className={`text-xs font-semibold px-2 py-0.5 rounded-full ${colors} border border-current`}>
           {skemaLabel}
         </span>
         <h4 className="font-semibold mt-1">{event.title}</h4>
         <p className="text-sm">{event.description}</p>
-        
+
         {event.pemateriNama && (
           <div className="flex items-center gap-1.5 mt-2 text-sm text-gray-700">
             <UserIcon className="w-4 h-4 text-gray-500" />
@@ -470,76 +452,75 @@ const AdminEventCard = ({ event, onEdit }) => {
   )
 }
 
-// Halaman Utama
 export default function TimelinePage() {
   const { user, loading: isAuthLoading } = useAuth()
   const router = useRouter()
-  
+
   const [date, setDate] = useState(new Date())
   const [allEvents, setAllEvents] = useState([])
   const [loading, setLoading] = useState(true)
   const [skemaOptions, setSkemaOptions] = useState([])
-  const [asesorList, setAsesorList] = useState([]); 
+  const [asesorList, setAsesorList] = useState([])
   const [error, setError] = useState(null)
 
   useEffect(() => {
-    if (isAuthLoading) return;
+    if (isAuthLoading) return
     if (!user) {
       router.push("/login")
-      return;
+      return
     }
     loadData()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user, isAuthLoading, router])
 
   const loadData = async () => {
     try {
       setLoading(true)
       setError(null)
-      
+
       const [skemaData, linimasaData, sesiUjianData, allAsesorData] = await Promise.all([
         mockGetAllSkema(),
-        mockGetLinimasa("ALL"), 
+        mockGetLinimasa("ALL"),
         mockGetSesiUjianOffline("ALL"),
-        mockGetAsesorUsers() 
-      ]);
+        mockGetAsesorUsers()
+      ])
 
-      setSkemaOptions(skemaData); 
-      setAsesorList(allAsesorData); 
+      setSkemaOptions(skemaData)
+      setAsesorList(allAsesorData)
 
-      const asesorNameMap = new Map(allAsesorData.map(a => [a.id, a.nama]));
+      const asesorNameMap = new Map(allAsesorData.map(a => [a.id, a.nama]))
 
       const formattedLinimasa = linimasaData.map(item => ({
         id: item.id,
-        date: new Date(item.tanggal).toDateString(), 
+        date: new Date(item.tanggal).toDateString(),
         title: `[${item.tipe}] ${item.judul}`,
         time: item.waktu || "Sepanjang hari",
         description: item.deskripsi,
         url: item.urlZoom,
         type: item.tipe === "PENGUMUMAN" ? "announcement" : "event",
         skemaId: item.skemaId || "UMUM",
-        pemateriAsesorId: item.pemateriAsesorId, 
-        pemateriNama: asesorNameMap.get(item.pemateriAsesorId) || null, 
+        pemateriAsesorId: item.pemateriAsesorId,
+        pemateriNama: asesorNameMap.get(item.pemateriAsesorId) || null,
         originalData: item
-      }));
+      }))
 
       const formattedSesiUjian = sesiUjianData.map(item => ({
         id: item.id,
-        date: new Date(item.tanggal).toDateString(), 
+        date: new Date(item.tanggal).toDateString(),
         title: `[UJIAN] ${item.tipeUjian === "TEORI" ? "Ujian Teori" : "Unjuk Diri"}`,
         time: item.waktu || "Waktu Menyusul",
         description: `Lokasi: ${item.ruangan} (Kapasitas: ${item.kapasitas})`,
         url: null,
         type: "exam",
         skemaId: item.skemaId,
-        pemateriNama: null, 
+        pemateriNama: null,
         originalData: item
-      }));
+      }))
 
-      const combinedEvents = [...formattedLinimasa, ...formattedSesiUjian];
-      combinedEvents.sort((a, b) => new Date(a.date) - new Date(b.date)); 
-      
-      setAllEvents(combinedEvents); 
-      
+      const combinedEvents = [...formattedLinimasa, ...formattedSesiUjian]
+      combinedEvents.sort((a, b) => new Date(a.date) - new Date(b.date))
+
+      setAllEvents(combinedEvents)
     } catch (err) {
       console.error("Error loading events:", err)
       setError("Gagal memuat jadwal.")
@@ -549,7 +530,7 @@ export default function TimelinePage() {
   }
 
   const onDataChanged = (newEvent) => {
-    loadData(); 
+    loadData()
   }
 
   const selectedDateStr = date ? date.toDateString() : new Date().toDateString()
@@ -575,7 +556,7 @@ export default function TimelinePage() {
             />
           </div>
         </div>
-        
+
         {error && (
           <Alert variant="destructive">
             <AlertCircle className="h-4 w-4" />
@@ -584,15 +565,11 @@ export default function TimelinePage() {
           </Alert>
         )}
 
-        {/* ====================================================== */}
-        {/* --- (PERBAIKAN 3: Layout & Komponen Kalender) --- */}
-        {/* ====================================================== */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-          
           <Card className="md:col-span-2 h-fit">
-            <CardContent className="p-0"> 
+            <CardContent className="p-0">
               {loading ? (
-                <Skeleton className="h-[400px] w-full" /> 
+                <Skeleton className="h-[400px] w-full" />
               ) : (
                 <Calendar
                   mode="single"
@@ -601,7 +578,7 @@ export default function TimelinePage() {
                   className="w-full p-4"
                   components={{
                     DayButton: (props) => (
-                      <CustomDayButton {...props} linimasa={allEvents} /> 
+                      <CustomDayButton {...props} linimasa={allEvents} />
                     )
                   }}
                 />
