@@ -12,7 +12,6 @@ import { Skeleton } from "@/components/ui/skeleton"
 import { Check, Play, Lock } from "lucide-react"
 import Link from "next/link"
 
-// Komponen FaseCard (sudah di luar, best practice)
 const FaseCard = ({ fase, judul, deskripsi, status, link, progressValue }) => {
   let statusButton
 
@@ -71,21 +70,19 @@ const FaseCard = ({ fase, judul, deskripsi, status, link, progressValue }) => {
 
 
 export default function AsesiDashboard() {
-  const { user, loading: isAuthLoading } = useAuth() // Ambil status loading auth
+  const { user, loading: isAuthLoading } = useAuth() 
   const router = useRouter()
   const [progress, setProgress] = useState(null)
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
-    // Perbaikan bug refresh
     if (isAuthLoading) {
-      return; // Tunggu auth selesai memuat
+      return; 
     }
     if (!user) {
-      router.push("/login"); // Jika tidak ada user, tendang
+      router.push("/login"); 
       return;
     }
-    // Jika user ada, baru muat data
     loadData()
   }, [user, isAuthLoading, router])
 
@@ -96,7 +93,6 @@ export default function AsesiDashboard() {
 
       const progressData = await mockGetProgressAsesi(user.id)
       
-      // Guard clause untuk Pra-Asesmen
       if (progressData.statusPraAsesmen === "BELUM") {
         router.push("/asesi/pra-asesmen")
         return 
@@ -111,7 +107,22 @@ export default function AsesiDashboard() {
     }
   }
   
-  // Tampilkan skeleton jika auth atau data sedang loading
+  const overallProgress = useMemo(() => {
+    if (!progress) return 0;
+    
+    let total = 0;
+    
+    total += (progress.progressPembelajaran || 0) * 0.4;
+    
+    if (progress.tryoutSelesai) total += 15; 
+    
+    if (progress.ujianTeoriSelesai) total += 15; 
+    
+    if (progress.ujianPraktikumSelesai) total += 15; 
+    
+    return Math.round(total);
+  }, [progress]);
+  
   if (loading || isAuthLoading || !progress) {
      return (
       <MainLayout>
@@ -124,7 +135,6 @@ export default function AsesiDashboard() {
     )
   }
 
-  // --- (LOGIKA BARU 3 FASE) ---
   const progressPercentage = progress?.progressPembelajaran || 0
   const statusFase1 = progressPercentage === 100 ? "SELESAI" : "AKTIF"
   
@@ -133,20 +143,26 @@ export default function AsesiDashboard() {
     statusFase2 = progress.tryoutSelesai ? "SELESAI" : "AKTIF"
   }
   
-  // Fase 3 (Ujian) sekarang hanya bergantung pada Fase 2 (Tryout)
   let statusFase3 = "TERKUNCI"
   if (statusFase2 === "SELESAI") {
     statusFase3 = "AKTIF" 
-    // Logika penguncian detail (Teori vs Praktikum) diurus di /asesi/exams
   }
 
   return (
     <MainLayout>
       <div className="p-6 space-y-6">
         
-        <div className="w-full bg-blue-700 text-white rounded-lg p-8">
+        <div className="w-full bg-blue-700 text-white rounded-lg p-8 space-y-4">
             <h1 className="text-3xl font-bold">Selamat Datang, {user?.nama}!</h1>
             <p className="text-blue-200 mt-1">Ikuti 3 fase untuk menyelesaikan sertifikasi.</p>
+            
+            <div className="pt-2">
+              <div className="flex justify-between text-sm font-medium text-blue-100 mb-1">
+                <span>Progress Keseluruhan</span>
+                <span>{overallProgress}%</span>
+              </div>
+              <Progress value={overallProgress} className="h-3 bg-white/20" indicatorClassName="bg-white" />
+            </div>
         </div>
 
         <div className="space-y-4">
@@ -165,14 +181,12 @@ export default function AsesiDashboard() {
             status={statusFase2}
             link="/asesi/tryout"
           />
-
-          {/* --- (KARTU FASE 3) --- */}
           <FaseCard 
             fase="Fase 3: Ujian Kompetensi"
             judul="Ujian Teori, Praktikum & Unjuk Diri"
             deskripsi="Masuk ke hub ujian untuk melihat jadwal dan mengerjakan ujian."
             status={statusFase3}
-            link="/asesi/exams" // <-- Link ke halaman hub ujian
+            link="/asesi/exams"
           />
         </div>
       </div>

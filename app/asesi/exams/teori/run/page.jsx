@@ -4,21 +4,21 @@ import { useEffect, useState, useCallback, useMemo } from "react"
 import { useRouter } from "next/navigation"
 import { useAuth } from "@/lib/auth-context"
 import { MainLayout } from "@/components/layout/main-layout"
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
+import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Textarea } from "@/components/ui/textarea"
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog"
 import { Skeleton } from "@/components/ui/skeleton"
-import { AlertCircle, Clock, Home, Loader2, MonitorOff } from "lucide-react"
+import { AlertCircle, Clock, Home, Loader2, MonitorOff, Check } from "lucide-react"
 import { 
   mockGetSoalForUnit, 
   mockGetUnitsForSkema, 
   mockSubmitUjianTeori,
-  mockGetExamStatus // API BARU UNTUK KEAMANAN
+  mockGetExamStatus 
 } from "@/lib/api-mock"
+import Link from "next/link"
 
-// Fungsi helper untuk kunci localStorage yang unik per user & skema
 const getExamStorageKey = (userId, skemaId) => `teori_exam_progress_${userId}_${skemaId}`;
 
 export default function TeoriExamRunPage() {
@@ -29,20 +29,18 @@ export default function TeoriExamRunPage() {
   const [soal, setSoal] = useState([])
   const [unitDetails, setUnitDetails] = useState([]) 
   
-  const [isLoadingData, setIsLoadingData] = useState(true) // Ganti nama 'loading'
-  const [isChecking, setIsChecking] = useState(true) // State untuk cek jadwal
-  const [authError, setAuthError] = useState(null) // State untuk error jadwal
+  const [isLoadingData, setIsLoadingData] = useState(true) 
+  const [isChecking, setIsChecking] = useState(true) 
+  const [authError, setAuthError] = useState(null) 
 
   const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0)
   const [showConfirmSubmit, setShowConfirmSubmit] = useState(false)
 
-  // State yang akan di-persist (disimpan)
   const [answers, setAnswers] = useState({})
   const [timeLeft, setTimeLeft] = useState(0)
   const [isExamActive, setIsExamActive] = useState(false)
   
   const [isRestored, setIsRestored] = useState(false)
-  //fullscreen
   const [showFullscreenWarning, setShowFullscreenWarning] = useState(false);
 
   const storageKey = useMemo(() => {
@@ -56,26 +54,27 @@ export default function TeoriExamRunPage() {
     }
   }, [storageKey])
 
-  // --- (FUNGSI BARU HELPER FULLSCREEN) ---
   const openFullscreen = () => {
     const elem = document.documentElement;
     if (elem.requestFullscreen) {
       elem.requestFullscreen().catch((err) => {
-        // Gagal otomatis, minta manual
         console.warn(`Gagal masuk fullscreen: ${err.message}. Meminta aksi user.`);
-        setShowFullscreenWarning(true); // Tampilkan modal peringatan jika gagal
+        setShowFullscreenWarning(true); 
       });
     }
   }
+  
   const closeFullscreen = () => {
     if (document.fullscreenElement && document.exitFullscreen) {
       document.exitFullscreen().catch(err => console.error("Gagal keluar fullscreen:", err));
     }
   }
+
   const handleSubmitExam = useCallback(async () => {
     if (!user) return;
     
     setIsExamActive(false)
+    closeFullscreen(); 
     
     console.log("Ujian Teori submitted with answers:", answers)
     await mockSubmitUjianTeori(user.id, answers);
@@ -86,7 +85,6 @@ export default function TeoriExamRunPage() {
     router.push("/asesi/exams")
   }, [answers, user, router, clearExamState])
 
-  // Efek Samping: Timer Ujian (Tidak berubah, sudah benar)
   useEffect(() => {
     if (!isExamActive || !isRestored) return
     
@@ -104,31 +102,26 @@ export default function TeoriExamRunPage() {
     return () => clearInterval(timer)
   }, [isExamActive, isRestored, handleSubmitExam])
 
-// --- (EFEK SAMPING BARU: FULLSCREEN HANDLER) ---
   useEffect(() => {
     const handleFullscreenChange = () => {
-      // Cek jika user keluar fullscreen saat ujian masih aktif
       if (!document.fullscreenElement && isExamActive) {
-        setIsExamActive(false); // Jeda ujian (timer berhenti)
-        setShowFullscreenWarning(true); // Tampilkan modal peringatan
+        setIsExamActive(false); 
+        setShowFullscreenWarning(true); 
       }
     };
 
     if (isExamActive && isRestored) {
-      // Jika ujian dimulai (atau dilanjutkan), paksa fullscreen
       openFullscreen();
       document.addEventListener('fullscreenchange', handleFullscreenChange);
     }
 
-    // Cleanup listener
     return () => {
       document.removeEventListener('fullscreenchange', handleFullscreenChange);
     };
   }, [isExamActive, isRestored]);
 
-  // Ini diperlukan agar bisa jadi dependensi useEffect dengan aman
   const loadExamData = useCallback(async () => {
-    if (!user || !storageKey) return; // Safety check
+    if (!user || !storageKey) return; 
 
     try {
       setIsLoadingData(true)
@@ -150,38 +143,35 @@ export default function TeoriExamRunPage() {
       }))
       setUnitDetails(details)
 
-      // Logika Pemulihan (Robustness)
       const savedStateJSON = localStorage.getItem(storageKey)
       
       if (savedStateJSON) {
         const savedState = JSON.parse(savedStateJSON)
         setAnswers(savedState.answers || {})
         setTimeLeft(savedState.timeLeft || totalDurationInSeconds)
-        setIsExamActive(true) // Langsung masuk ke ujian
+        setIsExamActive(true) 
       } else {
         setAnswers({})
         setTimeLeft(totalDurationInSeconds)
-        setIsExamActive(false) // Tampilkan layar Pre-Start
+        setIsExamActive(false) 
       }
       
     } catch (error) {
       console.error("Error loading exam:", error)
-      setAuthError("Gagal memuat data soal ujian.") // Set error jika load gagal
+      setAuthError("Gagal memuat data soal ujian.") 
     } finally {
       setIsLoadingData(false)
       setIsRestored(true)
     }
-  }, [user, storageKey]); // Dependensi useCallback
+  }, [user, storageKey]); 
 
-
-  // Efek Samping: Cek Keamanan & Jadwal
   useEffect(() => {
-    if (isAuthLoading) return; // 1. Tunggu auth
-    if (!user) { // 2. Cek user
+    if (isAuthLoading) return; 
+    if (!user) { 
       router.push("/login");
       return;
     }
-    if (!storageKey) return; // 3. Tunggu key siap
+    if (!storageKey) return; 
 
     const checkScheduleAndLoad = async () => {
       try {
@@ -189,7 +179,6 @@ export default function TeoriExamRunPage() {
         setAuthError(null);
         const status = await mockGetExamStatus(user.id);
 
-        // 4. Cek Prasyarat Dasar
         if (status.teori.status === "TERKUNCI") {
           setAuthError("Anda belum memenuhi prasyarat (menyelesaikan Tryout) untuk ujian ini.");
           return;
@@ -199,27 +188,21 @@ export default function TeoriExamRunPage() {
           return;
         }
 
-        // 5. Cek Jadwal (Ini adalah *offline guard*)
         const jadwal = status.teori.jadwal;
         if (!jadwal) {
           setAuthError("Jadwal ujian tidak ditemukan (Error: ST-JNF).");
           return;
         }
 
-        // 6. Cek Tanggal
         const isToday = new Date().toDateString() === new Date(jadwal.tanggal).toDateString();
         
-        // (CATATAN: Di development, kita longgarkan cek tanggal ini)
         if (!isToday) {
           console.warn("DEV_MODE: Cek tanggal ujian diabaikan.");
-          // Jika ingin ketat di production, uncomment baris di bawah:
           // setAuthError(`Ujian ini hanya bisa diakses pada ${new Date(jadwal.tanggal).toLocaleDateString("id-ID")}.`);
           // return;
         }
 
-        // --- Lolos Cek Keamanan ---
         setAuthError(null);
-        // Panggil fungsi pemuat data yang sudah di-wrap useCallback
         loadExamData(); 
 
       } catch (error) {
@@ -231,10 +214,9 @@ export default function TeoriExamRunPage() {
     }
 
     checkScheduleAndLoad();
-  }, [user, isAuthLoading, router, storageKey, loadExamData]); // Tambah loadExamData
+  }, [user, isAuthLoading, router, storageKey, loadExamData]); 
 
 
-  // Efek Samping: Simpan Jawaban (Tidak berubah, sudah benar)
   useEffect(() => {
     if (!isExamActive || !isRestored || !storageKey) return;
     try {
@@ -245,7 +227,6 @@ export default function TeoriExamRunPage() {
     } catch (e) { console.error("Gagal simpan jawaban:", e) }
   }, [answers, isExamActive, isRestored, storageKey])
 
-  // Efek Samping: Simpan Waktu (Tidak berubah, sudah benar)
   useEffect(() => {
     if (!isExamActive || !isRestored || !storageKey) return;
     try {
@@ -259,26 +240,27 @@ export default function TeoriExamRunPage() {
   }, [timeLeft, isExamActive, isRestored, storageKey])
 
 
-  // --- Handlers (Tidak berubah) ---
   const handleStartExam = () => setIsExamActive(true)
+  
   const handleAnswerChange = (value) => {
     const currentSoalId = soal[currentQuestionIndex]?.id;
     if (!currentSoalId) return;
     setAnswers((prev) => ({ ...prev, [currentSoalId]: value }))
   }
+  
   const handleNextQuestion = () => {
     if (currentQuestionIndex < soal.length - 1) setCurrentQuestionIndex((prev) => prev + 1)
   }
+  
   const handlePreviousQuestion = () => {
     if (currentQuestionIndex > 0) setCurrentQuestionIndex((prev) => prev - 1)
   }
+  
   const formatTime = (seconds) => {
     const mins = Math.floor(seconds / 60)
     const secs = seconds % 60
     return `${mins.toString().padStart(2, "0")}:${secs.toString().padStart(2, "0")}`
   }
-  // --- Batas Handlers ---
-
 
   if (isAuthLoading || isChecking) {
     return (
@@ -291,7 +273,6 @@ export default function TeoriExamRunPage() {
     )
   }
 
-  // Jika GAGAL cek keamanan
   if (authError) {
     return (
       <MainLayout>
@@ -312,7 +293,6 @@ export default function TeoriExamRunPage() {
     )
   }
 
-  // Tampilkan skeleton B HANYA jika data soal sedang dimuat
   if (isLoadingData) {
      return (
       <MainLayout>
@@ -339,152 +319,119 @@ export default function TeoriExamRunPage() {
 
   const currentSoal = soal[currentQuestionIndex];
   const currentUnit = units.find(u => u.id === currentSoal?.unitId);
-  const answeredCount = Object.keys(answers).length;
+  const answeredCount = Object.values(answers).filter(Boolean).length;
   const totalDurationMinutes = Math.floor(units.reduce((sum, unit) => sum + (unit.durasiTeori || 15), 0));
+  const areAllAnswered = answeredCount === soal.length;
 
-  return (
-    <MainLayout>
-      <div className="p-6 space-y-6">
-        {!isExamActive ? (
-          // Layar Pre-exam (Tidak berubah)
-          <Card className="max-w-2xl mx-auto">
-            <CardHeader>
-              <CardTitle>
-                Ujian Teori Skema {user?.skemaId}
-              </CardTitle>
-              <CardDescription>
-                Rincian soal dan durasi per unit kompetensi.
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-6">
-              
-              <div className="space-y-2 border rounded-lg p-4 max-h-60 overflow-y-auto">
-                {unitDetails.map(unit => (
-                  <div key={unit.id} className="flex justify-between items-center text-sm">
-                    <p className="text-muted-foreground">
-                      Unit {unit.nomorUnit}: {unit.judul}
+  if (isExamActive) {
+    return (
+      <div className="bg-gray-100 min-h-screen p-6">
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          <div className="lg:col-span-2 space-y-4">
+            <Card>
+              <CardContent className="pt-6">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <h3 className="font-medium">
+                      Ujian Teori Skema {user?.skemaId}
+                    </h3>
+                    <p className="text-sm text-muted-foreground mt-1">
+                      Soal {currentQuestionIndex + 1} dari {soal.length}
                     </p>
-                    <p className="font-medium">{unit.soalCount} Soal ({unit.durasiTeori} Menit)</p>
                   </div>
-                ))}
-              </div>
-
-              <div className="grid grid-cols-2 gap-4 text-center">
-                <div className="p-4 bg-muted rounded-lg">
-                  <p className="text-sm text-muted-foreground">Total Soal</p>
-                  <p className="text-2xl font-bold mt-2">{soal.length}</p>
-                </div>
-                <div className="p-4 bg-muted rounded-lg">
-                  <p className="text-sm text-muted-foreground">Total Durasi Ujian</p>
-                  <p className="text-2xl font-bold mt-2">{totalDurationMinutes} menit</p>
-                </div>
-              </div>
-
-              <Alert>
-                <AlertCircle className="h-4 w-4" />
-                <AlertDescription>
-                  Ujian akan dimulai segera. Pastikan Anda siap dan koneksi internet stabil. Waktu tidak dapat dijeda
-                  atau diulang setelah dimulai.
-                </AlertDescription>
-              </Alert>
-
-              <Button onClick={handleStartExam} size="lg" className="w-full">
-                Mulai Ujian
-              </Button>
-            </CardContent>
-          </Card>
-
-        ) : (
-          // Layar Ujian Aktif (Tidak berubah)
-          <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
-            <div className="lg:col-span-3 space-y-4">
-              <Card>
-                <CardContent className="pt-6">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <h3 className="font-medium">
-                        Ujian Teori Skema {user?.skemaId}
-                      </h3>
-                      <p className="text-sm text-muted-foreground mt-1">
-                        Soal {currentQuestionIndex + 1} dari {soal.length}
-                      </p>
-                    </div>
-                    <div className={`text-2xl font-bold ${timeLeft < 300 ? "text-destructive" : ""}`}>
-                      <Clock className="w-5 h-5 inline mr-2" />
-                      {formatTime(timeLeft)}
-                    </div>
+                  <div className={`text-2xl font-bold ${timeLeft < 300 ? "text-destructive" : ""}`}>
+                    <Clock className="w-5 h-5 inline mr-2" />
+                    {formatTime(timeLeft)}
                   </div>
-                </CardContent>
-              </Card>
-              <Card>
-                <CardHeader>
-                  {currentUnit && (
-                    <div className="text-xs font-semibold text-blue-600 bg-blue-50 px-2 py-1 rounded w-fit mb-2">
-                      Unit {currentUnit.nomorUnit}: {currentUnit.judul}
-                    </div>
-                  )}
-                  <CardTitle className="text-base">
-                    {currentSoal.teks}
-                  </CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <Textarea
-                    placeholder="Ketik jawaban esai Anda di sini..."
-                    value={answers[currentSoal?.id] || ""} 
-                    onChange={(e) => handleAnswerChange(e.target.value)}
-                    className="min-h-40"
-                  />
-                </CardContent>
-              </Card>
-              <div className="flex gap-3">
-                <Button variant="outline" onClick={handlePreviousQuestion} disabled={currentQuestionIndex === 0}>
-                  Sebelumnya
-                </Button>
-                <Button
-                  variant="outline"
-                  onClick={handleNextQuestion}
-                  disabled={currentQuestionIndex === soal.length - 1}
-                  className="flex-1 bg-transparent"
-                >
-                  Selanjutnya
-                </Button>
-                {currentQuestionIndex === soal.length - 1 && (
-                  <Button onClick={() => setShowConfirmSubmit(true)} className="flex-1">
-                    Selesaikan Ujian
-                  </Button>
-                )}
-              </div>
-            </div>
-            <Card className="lg:sticky lg:top-6 h-fit">
-              <CardHeader>
-                <CardTitle className="text-base">
-                  Daftar Soal ({answeredCount}/{soal.length})
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="grid grid-cols-4 gap-2">
-                  {soal.map((s, idx) => (
-                    <button
-                      key={s.id}
-                      onClick={() => setCurrentQuestionIndex(idx)}
-                      className={`w-full aspect-square flex items-center justify-center rounded text-xs font-medium transition-colors ${
-                        currentQuestionIndex === idx
-                          ? "bg-primary text-primary-foreground"
-                          : answers[s.id] 
-                            ? "bg-green-100 text-green-800 hover:bg-green-200"
-                            : "bg-muted hover:bg-muted/80"
-                      }`}
-                    >
-                      {idx + 1}
-                    </button>
-                  ))}
                 </div>
               </CardContent>
             </Card>
+            
+            <Card>
+              <CardHeader>
+                {currentUnit && (
+                  <div className="text-xs font-semibold text-blue-600 bg-blue-50 px-2 py-1 rounded w-fit mb-2">
+                    Unit {currentUnit.nomorUnit}: {currentUnit.judul}
+                  </div>
+                )}
+                <CardTitle className="text-base">
+                  {currentSoal.teks}
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <Textarea
+                  placeholder="Ketik jawaban esai Anda di sini..."
+                  value={answers[currentSoal?.id] || ""} 
+                  onChange={(e) => handleAnswerChange(e.target.value)}
+                  className="min-h-40"
+                />
+              </CardContent>
+            </Card>
+            
+            <div className="flex gap-3">
+              <Button variant="outline" onClick={handlePreviousQuestion} disabled={currentQuestionIndex === 0}>
+                Sebelumnya
+              </Button>
+              <Button
+                variant="outline"
+                onClick={handleNextQuestion}
+                disabled={currentQuestionIndex === soal.length - 1}
+                className="flex-1"
+              >
+                Selanjutnya
+              </Button>
+            </div>
           </div>
-        )}
+          
+          <Card id="unit-navigation" className="lg:sticky lg:top-6 h-fit">
+            <CardHeader>
+              <CardTitle className="text-base">
+                Daftar Soal ({answeredCount}/{soal.length})
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="grid grid-cols-7 gap-2">
+                {soal.map((s, idx) => {
+                  const isCurrent = currentQuestionIndex === idx;
+                  const isAnswered = !!answers[s.id];
 
-        {/* Dialog Konfirmasi (Tidak berubah) */}
+                  const baseClasses = "w-full aspect-square flex items-center justify-center rounded text-xs font-medium transition-colors";
+                  let variantClasses = "";
+
+                  if (isCurrent) {
+                    variantClasses = "bg-primary text-primary-foreground";
+                  } else if (isAnswered) {
+                    variantClasses = "bg-green-100 text-green-800 hover:bg-green-200";
+                  } else {
+                    variantClasses = "bg-muted hover:bg-muted/80";
+                  }
+                  
+                  return (
+                    <button
+                      key={s.id}
+                      onClick={() => setCurrentQuestionIndex(idx)}
+                      className={`${baseClasses} ${variantClasses}`}
+                    >
+                      {idx + 1}
+                    </button>
+                  )
+                })}
+              </div>
+            </CardContent>
+            <CardFooter>
+              <Button 
+                onClick={() => setShowConfirmSubmit(true)} 
+                disabled={!areAllAnswered}
+                title={!areAllAnswered ? "Harap jawab semua soal terlebih dahulu" : "Selesaikan Ujian"}
+                className="w-full bg-green-600 hover:bg-green-700"
+              >
+                <Check className="w-4 h-4 mr-2" />
+                Selesaikan Ujian
+              </Button>
+            </CardFooter>
+          </Card>
+        </div>
+
         <Dialog open={showConfirmSubmit} onOpenChange={setShowConfirmSubmit}>
           <DialogContent>
             <DialogHeader>
@@ -508,7 +455,84 @@ export default function TeoriExamRunPage() {
             </DialogFooter>
           </DialogContent>
         </Dialog>
+
+        <Dialog open={showFullscreenWarning} onOpenChange={setShowFullscreenWarning}>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle className="flex items-center gap-2">
+                <MonitorOff className="w-5 h-5 text-destructive" />
+                Mode Fullscreen Diperlukan
+              </DialogTitle>
+              <DialogDescription>
+                Anda (atau sistem) telah keluar dari mode fullscreen. Untuk melanjutkan ujian, Anda harus masuk kembali ke mode fullscreen.
+              </DialogDescription>
+            </DialogHeader>
+            <DialogFooter>
+              <Button 
+                className="w-full"
+                onClick={() => {
+                  setShowFullscreenWarning(false);
+                  setIsExamActive(true); 
+                }}
+              >
+                Masuk Fullscreen dan Lanjutkan
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+      </div>
+    );
+  }
+
+  return (
+    <MainLayout>
+      <div className="p-6 space-y-6">
+        <Card className="max-w-2xl mx-auto">
+          <CardHeader>
+            <CardTitle>
+              Ujian Teori Skema {user?.skemaId}
+            </CardTitle>
+            <CardDescription>
+              Rincian soal dan durasi per unit kompetensi.
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-6">
+            
+            <div className="space-y-2 border rounded-lg p-4 max-h-60 overflow-y-auto">
+              {unitDetails.map(unit => (
+                <div key={unit.id} className="flex justify-between items-center text-sm">
+                  <p className="text-muted-foreground">
+                    Unit {unit.nomorUnit}: {unit.judul}
+                  </p>
+                  <p className="font-medium">{unit.soalCount} Soal ({unit.durasiTeori} Menit)</p>
+                </div>
+              ))}
+            </div>
+
+            <div className="grid grid-cols-2 gap-4 text-center">
+              <div className="p-4 bg-muted rounded-lg">
+                <p className="text-sm text-muted-foreground">Total Soal</p>
+                <p className="text-2xl font-bold mt-2">{soal.length}</p>
+              </div>
+              <div className="p-4 bg-muted rounded-lg">
+                <p className="text-sm text-muted-foreground">Total Durasi Ujian</p>
+                <p className="text-2xl font-bold mt-2">{totalDurationMinutes} menit</p>
+              </div>
+            </div>
+
+            <Alert>
+              <AlertCircle className="h-4 w-4" />
+              <AlertDescription>
+                Ujian akan dimulai dalam mode fullscreen. Pastikan Anda siap dan koneksi internet stabil. Waktu tidak dapat dijeda.
+              </AlertDescription>
+            </Alert>
+
+            <Button onClick={handleStartExam} size="lg" className="w-full">
+              Mulai Ujian
+            </Button>
+          </CardContent>
+        </Card>
       </div>
     </MainLayout>
-  )
+  );
 }
