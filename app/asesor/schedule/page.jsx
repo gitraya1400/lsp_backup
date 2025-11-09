@@ -4,7 +4,8 @@ import React, { useEffect, useState, useMemo } from "react"
 import { MainLayout } from "@/components/layout/main-layout"
 import { useAuth } from "@/lib/auth-context" 
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
-import { Calendar } from "@/components/ui/calendar"
+// --- (PERBAIKAN 1: Impor CalendarDayButton) ---
+import { Calendar, CalendarDayButton } from "@/components/ui/calendar"
 import { Button } from "@/components/ui/button"
 import { Skeleton } from "@/components/ui/skeleton"
 import { 
@@ -16,18 +17,18 @@ import {
   Info, 
   UserCheck, 
   Presentation, 
-  User as UserIcon // <-- 1. IMPORT IKON USER
+  User as UserIcon // <-- Pastikan UserIcon di-impor
 } from "lucide-react" 
-// --- 2. IMPORT FUNGSI BARU ---
 import { mockGetLinimasa, mockGetAsesorUsers } from "@/lib/api-mock"
-import { DayButton } from "react-day-picker" 
+// --- DayButton tidak perlu lagi diimpor dari react-day-picker ---
 import { cn } from "@/lib/utils"
 
-// --- Komponen Event Tag (BARU) ---
-// (Tidak berubah)
+// ===============================================================
+// --- (PERBAIKAN 2: Komponen Kalender Kustom) ---
+// ===============================================================
 const EventTag = ({ event }) => {
   let Icon = Info;
-  let colors = "bg-blue-500 text-white"; // Default: PEMBELAJARAN
+  let colors = "bg-blue-500 text-white"; 
   let label = event.tipe || "Info";
 
   switch (event.tipe) {
@@ -63,8 +64,7 @@ const EventTag = ({ event }) => {
   );
 };
 
-// --- Komponen Tombol Hari Kustom (BARU) ---
-// (Tidak berubah)
+// --- Ganti DayButton jadi CalendarDayButton ---
 const CustomDayButton = ({ linimasa = [], ...props }) => {
   const day = props.day;
   const eventsForDay = useMemo(() => {
@@ -74,7 +74,8 @@ const CustomDayButton = ({ linimasa = [], ...props }) => {
   }, [linimasa, day.date]);
 
   return (
-    <DayButton {...props}>
+    // --- Ganti dari <DayButton> ke <CalendarDayButton> ---
+    <CalendarDayButton {...props}>
       {props.children}
       {eventsForDay.length > 0 && (
         <div className="event-tag-container">
@@ -88,12 +89,16 @@ const CustomDayButton = ({ linimasa = [], ...props }) => {
           )}
         </div>
       )}
-    </DayButton>
+    </CalendarDayButton>
+    // --- Batas Ganti ---
   );
 };
 
-// --- Komponen Kartu Statistik (BARU) ---
-// (Tidak berubah)
+// ===============================================================
+// --- BATAS KODE BARU ---
+// ===============================================================
+
+// StatCard (Tidak Berubah)
 const StatCard = ({ title, value, icon, colorClass, loading }) => {
   const Icon = icon;
   return (
@@ -128,33 +133,27 @@ export default function AsesorSchedulePage() {
     }
   }, [user]);
 
-  // --- 3. FUNGSI loadLinimasa DIUBAH TOTAL ---
+  // loadLinimasa (Tidak Berubah, sudah benar)
   const loadLinimasa = async () => {
     try {
       setLoading(true);
       const skemaId = user?.skemaKeahlian?.[0] || "ADS";
       
-      // Ambil data linimasa DAN data asesor secara bersamaan
       const [data, allAsesorData] = await Promise.all([
         mockGetLinimasa(skemaId),
         mockGetAsesorUsers() 
       ]);
 
-      // Buat "kamus" untuk cari nama asesor
       const asesorNameMap = new Map(allAsesorData.map(a => [a.id, a.nama]));
       
-      // Format ulang data linimasa untuk nambahin info pemateri
       const formattedLinimasa = data.map(event => ({
         ...event,
-        // Cari nama pemateri pake kamus
         pemateriNama: asesorNameMap.get(event.pemateriAsesorId) || null, 
-        // Cek apakah asesor yg login ini adalah pematerinya
         isPemateri: event.pemateriAsesorId === user.id 
       }));
       
-      setLinimasa(formattedLinimasa); // Set state dengan data yang sudah lengkap
+      setLinimasa(formattedLinimasa); 
 
-      // Logika statistik (tidak berubah)
       const today = new Date();
       const firstDayOfWeek = new Date(today.setDate(today.getDate() - today.getDay()));
       const lastDayOfWeek = new Date(firstDayOfWeek);
@@ -182,8 +181,6 @@ export default function AsesorSchedulePage() {
       setLoading(false);
     }
   };
-  // --- (BATAS PERUBAHAN FUNGSI) ---
-
 
   const selectedEvents = selectedDate
     ? linimasa.filter((event) => new Date(event.tanggal).toDateString() === selectedDate.toDateString())
@@ -193,7 +190,6 @@ export default function AsesorSchedulePage() {
     <MainLayout>
       <div className="p-6 space-y-6">
         
-        {/* --- 1. STATISTIK HEADER (Tidak berubah) --- */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           <StatCard 
             title="Total Kegiatan" 
@@ -218,10 +214,11 @@ export default function AsesorSchedulePage() {
           />
         </div>
 
-        {/* --- 2. LAYOUT UTAMA (Perbaikan di sini) --- */}
+        {/* ====================================================== */}
+        {/* --- (PERBAIKAN 3: Layout & Komponen Kalender) --- */}
+        {/* ====================================================== */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           
-          {/* Kolom Kiri: Kalender Besar */}
           <div className="lg:col-span-2">
             <Card className="shadow-lg p-0">
               <CardHeader className="bg-blue-600 text-white rounded-t-xl p-4">
@@ -238,7 +235,7 @@ export default function AsesorSchedulePage() {
                     mode="single"
                     selected={selectedDate}
                     onSelect={setSelectedDate}
-                    className="p-4 w-full" 
+                    className="p-4 w-full"
                     components={{
                       DayButton: (props) => (
                         <CustomDayButton {...props} linimasa={linimasa} />
@@ -250,7 +247,6 @@ export default function AsesorSchedulePage() {
             </Card>
           </div>
 
-          {/* Kolom Kanan: Daftar Event */}
           <div className="lg:col-span-1 space-y-4">
              <Card className="shadow-lg sticky top-6 p-0">
               <CardHeader className="bg-gray-800 text-white rounded-t-xl p-4">
@@ -287,12 +283,11 @@ export default function AsesorSchedulePage() {
                             <h4 className="font-semibold mt-2">{event.judul}</h4>
                             <p className="text-sm text-muted-foreground mt-1">{event.deskripsi}</p>
                             
-                            {/* --- 4. TAMPILKAN INFO PEMATERI DI SINI --- */}
                             {event.pemateriNama && (
                               <div className={cn(
                                 "flex items-center gap-1.5 mt-3 text-sm",
                                 event.isPemateri 
-                                  ? "text-blue-700 font-semibold" // Kasih highlight kalo dia pematerinya
+                                  ? "text-blue-700 font-semibold" 
                                   : "text-gray-600"
                               )}>
                                 <UserIcon className="w-4 h-4" />
@@ -300,7 +295,6 @@ export default function AsesorSchedulePage() {
                                 {event.isPemateri && " (Anda)"}
                               </div>
                             )}
-                            {/* --- (BATAS BLOK BARU) --- */}
 
                             <div className="flex items-center gap-2 mt-3 text-sm text-muted-foreground">
                               <Clock className="w-4 h-4" />

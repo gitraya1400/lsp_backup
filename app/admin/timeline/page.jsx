@@ -1,14 +1,14 @@
 "use client"
 
-import React, { useEffect, useState, useMemo } from "react" // <-- TAMBAH 'useMemo'
+import React, { useEffect, useState, useMemo } from "react"
 import { MainLayout } from "@/components/layout/main-layout"
 import { useAuth } from "@/lib/auth-context"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
-// --- TAMBAH 'Presentation' ---
 import { Calendar as CalendarIcon, PlusCircle, AlertCircle, Clock, Users, Video, Info, UserCheck, Edit2, User as UserIcon, Presentation } from "lucide-react"
-import { Calendar } from "@/components/ui/calendar"
+// --- (PERBAIKAN 1: Impor CalendarDayButton) ---
+import { Calendar, CalendarDayButton } from "@/components/ui/calendar"
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog"
 import { Input } from "@/components/ui/input"
@@ -25,12 +25,10 @@ import {
 import { Skeleton } from "@/components/ui/skeleton"
 import { useRouter } from "next/navigation"
 import { Textarea } from "@/components/ui/textarea"
-import { DayButton } from "react-day-picker" // <-- TAMBAH IMPOR INI
-import { cn } from "@/lib/utils" // <-- TAMBAH IMPOR INI
+import { cn } from "@/lib/utils" 
 
 // ===============================================================
-// --- KODE BARU: Komponen Kalender Kustom (dari Asesor) ---
-// (Diadaptasi untuk data Admin: event.type, event.title, event.date)
+// --- (PERBAIKAN 2: Komponen Kalender Kustom) ---
 // ===============================================================
 
 const EventTag = ({ event }) => {
@@ -49,7 +47,7 @@ const EventTag = ({ event }) => {
       colors = "bg-purple-600 text-white";
       label = "Ujian";
       break;
-    case "event": // Ini untuk 'PEMBELAJARAN'
+    case "event": 
       Icon = Video;
       colors = "bg-blue-500 text-white";
       label = "Sesi";
@@ -59,7 +57,6 @@ const EventTag = ({ event }) => {
       break;
   }
   
-  // Ambil kata pertama dari judul (buang tag [UJIAN] dsb)
   const titleWord = event.title.split(' ').find(word => word.length > 2 && !word.startsWith('[')) || label;
 
   return (
@@ -70,20 +67,21 @@ const EventTag = ({ event }) => {
   );
 };
 
+// --- Ganti DayButton jadi CalendarDayButton ---
 const CustomDayButton = ({ linimasa = [], ...props }) => {
   const day = props.day;
   const eventsForDay = useMemo(() => {
     if (!Array.isArray(linimasa)) {
       return [];
     }
-    // Cocokkan dengan 'event.date' yang ada di state 'allEvents'
     return linimasa.filter(
       (event) => event.date === day.date.toDateString()
     );
   }, [linimasa, day.date]);
 
   return (
-    <DayButton {...props}>
+    // --- Ganti dari <DayButton> ke <CalendarDayButton> ---
+    <CalendarDayButton {...props}>
       {props.children}
       {eventsForDay.length > 0 && (
         <div className="event-tag-container">
@@ -97,7 +95,8 @@ const CustomDayButton = ({ linimasa = [], ...props }) => {
           )}
         </div>
       )}
-    </DayButton>
+    </CalendarDayButton>
+    // --- Batas Ganti ---
   );
 };
 
@@ -106,10 +105,7 @@ const CustomDayButton = ({ linimasa = [], ...props }) => {
 // ===============================================================
 
 
-// ===============================================================
-// MODAL 1: Buat Sesi Ujian (Offline)
-// (Tidak ada perubahan di modal ini)
-// ===============================================================
+// Modal 1: CreateSesiModal (Tidak Berubah)
 function CreateSesiModal({ skemaOptions, onSesiCreated }) {
   const [open, setOpen] = useState(false)
   const [skemaId, setSkemaId] = useState("")
@@ -244,9 +240,7 @@ function CreateSesiModal({ skemaOptions, onSesiCreated }) {
   )
 }
 
-// ===============================================================
-// MODAL 2: Buat Kegiatan Linimasa (Ini yang sudah FIX error value="")
-// ===============================================================
+// Modal 2: CreateLinimasaModal (Tidak Berubah, sudah fix)
 function CreateLinimasaModal({ skemaOptions, asesorList, onEventCreated }) {
   const [open, setOpen] = useState(false)
   const [skemaId, setSkemaId] = useState("UMUM")
@@ -256,7 +250,7 @@ function CreateLinimasaModal({ skemaOptions, asesorList, onEventCreated }) {
   const [tanggal, setTanggal] = useState(null)
   const [waktu, setWaktu] = useState("")
   const [urlZoom, setUrlZoom] = useState("")
-  const [pemateriAsesorId, setPemateriAsesorId] = useState("") // <-- State awal tetep "" (biar placeholder muncul)
+  const [pemateriAsesorId, setPemateriAsesorId] = useState("") 
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [error, setError] = useState(null)
 
@@ -407,9 +401,7 @@ function CreateLinimasaModal({ skemaOptions, asesorList, onEventCreated }) {
   )
 }
 
-// ===============================================================
-// KARTU EVENT UNTUK ADMIN (MODIFIKASI: TAMPILKAN PEMATERI)
-// ===============================================================
+// AdminEventCard (Tidak Berubah)
 const AdminEventCard = ({ event, onEdit }) => {
   const router = useRouter();
   
@@ -478,16 +470,13 @@ const AdminEventCard = ({ event, onEdit }) => {
   )
 }
 
-// ===============================================================
-// HALAMAN UTAMA (MODIFIKASI: LOAD ASESOR & MERGE DATA)
-// ===============================================================
+// Halaman Utama
 export default function TimelinePage() {
   const { user, loading: isAuthLoading } = useAuth()
   const router = useRouter()
   
   const [date, setDate] = useState(new Date())
   const [allEvents, setAllEvents] = useState([])
-  const [eventDates, setEventDates] = useState([])
   const [loading, setLoading] = useState(true)
   const [skemaOptions, setSkemaOptions] = useState([])
   const [asesorList, setAsesorList] = useState([]); 
@@ -521,7 +510,7 @@ export default function TimelinePage() {
 
       const formattedLinimasa = linimasaData.map(item => ({
         id: item.id,
-        date: new Date(item.tanggal).toDateString(),
+        date: new Date(item.tanggal).toDateString(), 
         title: `[${item.tipe}] ${item.judul}`,
         time: item.waktu || "Sepanjang hari",
         description: item.deskripsi,
@@ -535,7 +524,7 @@ export default function TimelinePage() {
 
       const formattedSesiUjian = sesiUjianData.map(item => ({
         id: item.id,
-        date: new Date(item.tanggal).toDateString(),
+        date: new Date(item.tanggal).toDateString(), 
         title: `[UJIAN] ${item.tipeUjian === "TEORI" ? "Ujian Teori" : "Unjuk Diri"}`,
         time: item.waktu || "Waktu Menyusul",
         description: `Lokasi: ${item.ruangan} (Kapasitas: ${item.kapasitas})`,
@@ -549,9 +538,7 @@ export default function TimelinePage() {
       const combinedEvents = [...formattedLinimasa, ...formattedSesiUjian];
       combinedEvents.sort((a, b) => new Date(a.date) - new Date(b.date)); 
       
-      setAllEvents(combinedEvents);
-      // 'event.date' udah bener (string), jadi kita convert lagi ke Date object buat 'modifiers'
-      setEventDates(combinedEvents.map(event => new Date(event.date)));
+      setAllEvents(combinedEvents); 
       
     } catch (err) {
       console.error("Error loading events:", err)
@@ -562,7 +549,7 @@ export default function TimelinePage() {
   }
 
   const onDataChanged = (newEvent) => {
-    loadData(); // Reload semua data
+    loadData(); 
   }
 
   const selectedDateStr = date ? date.toDateString() : new Date().toDateString()
@@ -598,24 +585,22 @@ export default function TimelinePage() {
         )}
 
         {/* ====================================================== */}
-        {/* --- PERBAIKAN LAYOUT: Kalender 2 kolom, List 1 kolom --- */}
+        {/* --- (PERBAIKAN 3: Layout & Komponen Kalender) --- */}
         {/* ====================================================== */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
           
-          {/* Kolom Kiri: Kalender (Sekarang jadi lebar) */}
           <Card className="md:col-span-2 h-fit">
-            <CardContent className="p-0"> {/* <-- Ubah p-2 jadi p-0 */}
+            <CardContent className="p-0"> 
               {loading ? (
-                <Skeleton className="h-[290px] w-full" />
+                <Skeleton className="h-[400px] w-full" /> 
               ) : (
                 <Calendar
                   mode="single"
                   selected={date}
                   onSelect={setDate}
-                  className="w-full p-4" // <-- Tambah p-4 di sini
+                  className="w-full p-4"
                   components={{
                     DayButton: (props) => (
-                      // 'allEvents' adalah state yang berisi event.date
                       <CustomDayButton {...props} linimasa={allEvents} /> 
                     )
                   }}
@@ -624,7 +609,6 @@ export default function TimelinePage() {
             </CardContent>
           </Card>
 
-          {/* Kolom Kanan: Daftar Kegiatan (Sekarang jadi sempit) */}
           <div className="md:col-span-1 space-y-4">
             <h2 className="text-xl font-semibold">
               Kegiatan pada {new Date(selectedDateStr).toLocaleDateString("id-ID", { weekday: 'long', day: 'numeric', month: 'long' })}

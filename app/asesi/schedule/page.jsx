@@ -4,24 +4,21 @@ import { useEffect, useState, useMemo } from "react"
 import { MainLayout } from "@/components/layout/main-layout"
 import { useAuth } from "@/lib/auth-context"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { Calendar } from "@/components/ui/calendar"
+// --- (PERBAIKAN 1: Impor CalendarDayButton) ---
+import { Calendar, CalendarDayButton } from "@/components/ui/calendar"
 import { Skeleton } from "@/components/ui/skeleton"
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
-// --- (PERUBAHAN 1: Tambah User as UserIcon & Presentation) ---
 import { Calendar as CalendarIcon, Clock, Video, Info, UserCheck, AlertCircle, Presentation, User as UserIcon } from "lucide-react"
 import { Button } from "@/components/ui/button"
 
-// --- (PERUBAHAN 2: Tambah mockGetAsesorUsers) ---
 import { mockGetLinimasa, mockGetPlottingAsesi, mockGetAsesorUsers } from "@/lib/api-mock"
 import { useRouter } from "next/navigation"
-import { DayButton } from "react-day-picker" 
 import { cn } from "@/lib/utils" 
 
+// ===============================================================
+// --- (PERBAIKAN 2: Komponen Kalender Kustom) ---
+// ===============================================================
 
-// ===============================================================
-// --- Komponen Kalender Kustom (dari Asesor) ---
-// (Tidak berubah, sudah benar)
-// ===============================================================
 const EventTag = ({ event }) => {
   let Icon = Info;
   let colors = "bg-blue-500 text-white";
@@ -38,7 +35,7 @@ const EventTag = ({ event }) => {
       colors = "bg-purple-600 text-white";
       label = "Ujian";
       break;
-    case "event": // Ini untuk 'PEMBELAJARAN'
+    case "event": 
       Icon = Video;
       colors = "bg-blue-500 text-white";
       label = "Sesi";
@@ -58,6 +55,7 @@ const EventTag = ({ event }) => {
   );
 };
 
+// --- Ganti DayButton jadi CalendarDayButton ---
 const CustomDayButton = ({ linimasa = [], ...props }) => {
   const day = props.day;
   const eventsForDay = useMemo(() => {
@@ -70,7 +68,8 @@ const CustomDayButton = ({ linimasa = [], ...props }) => {
   }, [linimasa, day.date]);
 
   return (
-    <DayButton {...props}>
+    // --- Ganti dari <DayButton> ke <CalendarDayButton> ---
+    <CalendarDayButton {...props}>
       {props.children}
       {eventsForDay.length > 0 && (
         <div className="event-tag-container">
@@ -84,14 +83,17 @@ const CustomDayButton = ({ linimasa = [], ...props }) => {
           )}
         </div>
       )}
-    </DayButton>
+    </CalendarDayButton>
+    // --- Batas Ganti ---
   );
 };
 
+// ===============================================================
+// --- BATAS KODE BARU ---
+// ===============================================================
 
-// ===============================================================
-// --- (PERUBAHAN 3: EventCard ditambah info Pemateri) ---
-// ===============================================================
+
+// Helper Card untuk menampilkan event (Sudah di-update)
 const EventCard = ({ event }) => {
   let Icon = Info
   let colors = "bg-blue-50 border-blue-200 text-blue-800"
@@ -114,14 +116,12 @@ const EventCard = ({ event }) => {
         <h4 className="font-semibold">{event.title}</h4>
         <p className="text-sm">{event.description}</p>
         
-        {/* --- BLOK BARU UNTUK TAMPILKAN PEMATERI --- */}
         {event.pemateriNama && (
           <div className="flex items-center gap-1.5 mt-2 text-sm text-gray-700">
             <UserIcon className="w-4 h-4 text-gray-500" />
             Pemateri: <span className="font-medium">{event.pemateriNama}</span>
           </div>
         )}
-        {/* --- BATAS BLOK BARU --- */}
 
         <div className="flex items-center gap-4 mt-2 text-sm">
           <span className="flex items-center gap-1.5">
@@ -159,26 +159,21 @@ export default function SchedulePage() {
     loadEvents();
   }, [user, isAuthLoading, router]) 
 
-  // ===============================================================
-  // --- (PERUBAHAN 4: loadEvents ditambah fetch Asesor) ---
-  // ===============================================================
+  // loadEvents (Sudah di-update)
   const loadEvents = async () => {
     if (!user) return;
     try {
       setLoading(true)
       setError(null)
       
-      // Ambil linimasa, plotting, DAN data asesor
       const [linimasaData, plottingData, allAsesorData] = await Promise.all([
         mockGetLinimasa(user.skemaId),
         mockGetPlottingAsesi(user.id),
-        mockGetAsesorUsers() // <-- Ditambah
+        mockGetAsesorUsers() 
       ]);
 
-      // Buat kamus nama asesor
       const asesorNameMap = new Map(allAsesorData.map(a => [a.id, a.nama]));
 
-      // Format linimasa sambil nambahin nama pemateri
       const formattedLinimasa = linimasaData.map(item => ({
         id: item.id,
         date: new Date(item.tanggal).toDateString(),
@@ -187,10 +182,9 @@ export default function SchedulePage() {
         description: item.deskripsi,
         url: item.urlZoom,
         type: item.tipe === "PENGUMUMAN" ? "announcement" : "event",
-        pemateriNama: asesorNameMap.get(item.pemateriAsesorId) || null // <-- Ditambah
+        pemateriNama: asesorNameMap.get(item.pemateriAsesorId) || null 
       }));
 
-      // Format plotting (tidak ada pemateri)
       const formattedPlotting = plottingData.map(item => ({
         id: item.id,
         date: new Date(item.tanggal).toDateString(),
@@ -199,7 +193,7 @@ export default function SchedulePage() {
         description: `Lokasi: ${item.ruangan}`,
         url: null, 
         type: "exam",
-        pemateriNama: null // <-- Ditambah biar strukturnya sama
+        pemateriNama: null 
       }));
 
       const allEvents = [...formattedLinimasa, ...formattedPlotting];
@@ -238,13 +232,12 @@ export default function SchedulePage() {
         )}
 
         {/* ====================================================== */}
-        {/* --- (PERUBAHAN 5: Layout grid diubah) --- */}
+        {/* --- (PERBAIKAN 3: Layout & Komponen Kalender) --- */}
         {/* ====================================================== */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
           
-          {/* Kolom Kiri: Kalender (Sekarang jadi lebar) */}
           <Card className="md:col-span-2 h-fit">
-            <CardContent className="p-0"> {/* <-- Ubah p-2 jadi p-0 */}
+            <CardContent className="p-0"> 
               {loading ? (
                 <Skeleton className="h-[400px] w-full" />
               ) : (
@@ -252,21 +245,17 @@ export default function SchedulePage() {
                   mode="single"
                   selected={date}
                   onSelect={setDate}
-                  className="w-full p-4" // <-- Tambah p-4 di sini
-                  
-                  // --- GANTI LOGIKA MODIFIERS ---
+                  className="w-full p-4" 
                   components={{
                     DayButton: (props) => (
                       <CustomDayButton {...props} linimasa={events} />
                     )
                   }}
-                  // --- BATAS PERUBAHAN ---
                 />
               )}
             </CardContent>
           </Card>
 
-          {/* Kolom Kanan: Daftar Kegiatan (Sekarang jadi sempit) */}
           <div className="md:col-span-1 space-y-4">
             <h2 className="text-xl font-semibold">
               Kegiatan pada {new Date(selectedDateStr).toLocaleDateString("id-ID", { weekday: 'long', day: 'numeric', month: 'long' })}
