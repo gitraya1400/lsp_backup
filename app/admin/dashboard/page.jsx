@@ -68,7 +68,7 @@ export default function AdminDashboard() {
           <StatCard title="Total Asesi" value={stats?.totalAsesi || 0} icon={Users} href="/admin/users" colorClass="text-blue-600" />
           <StatCard title="Total Asesor" value={stats?.totalAsesor || 0} icon={UserCheck} href="/admin/users" colorClass="text-purple-600" />
           <StatCard title="Penilaian Tertunda" value={stats?.pendingGrading || 0} icon={AlertCircle} href="/admin/assignments" colorClass="text-orange-600" />
-          <StatCard title="Asesi Siap Ujian" value={stats?.readyForExam || 0} icon={TrendingUp} href="/admin/exams" colorClass="text-green-600" />
+          <StatCard title="Asesi Siap Ujian" value={stats?.readyForExam || 0} icon={TrendingUp} href="#" colorClass="text-green-600" />
         </div>
 
         {/* Quick Actions & System Status */}
