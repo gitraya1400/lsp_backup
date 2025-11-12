@@ -341,7 +341,6 @@ export default function AssignmentsPage() {
           <CardContent className="pt-6 space-y-4">
             {/* Grid diubah jadi 3 kolom */}
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              
               {/* Kolom 1: Skema */}
               <div>
                 <label className="text-sm font-medium block mb-1.5">Skema</label>
@@ -435,8 +434,7 @@ export default function AssignmentsPage() {
                   <div className="space-y-4">
                     <div className="p-4 border-b">
                       <h4 className="font-semibold text-gray-900 mb-3 flex items-center">
-                        <Sparkles className="w-5 h-5 mr-2 text-blue-600" />
-                        Bulk Assign (Khusus Teori)
+                            Penugasan Kelas
                       </h4>
                       <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-5 gap-3">
                         <Select value={selectedBulkClass} onValueChange={setSelectedBulkClass}>

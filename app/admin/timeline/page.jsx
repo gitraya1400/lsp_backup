@@ -571,17 +571,22 @@ export default function TimelinePage() {
               {loading ? (
                 <Skeleton className="h-[400px] w-full" />
               ) : (
-                <Calendar
-                  mode="single"
-                  selected={date}
-                  onSelect={setDate}
-                  className="w-full p-4"
-                  components={{
-                    DayButton: (props) => (
-                      <CustomDayButton {...props} linimasa={allEvents} />
-                    )
-                  }}
-                />
+                // container baru: pusatkan calendar, batasi lebar dan beri min-height agar grid hari tersusun rapi
+                <div className="w-full p-4 flex justify-center">
+                  <div className="w-full max-w-3xl min-h-[380px]">
+                    <Calendar
+                      mode="single"
+                      selected={date}
+                      onSelect={setDate}
+                      className="w-full min-h-[360px]"
+                      components={{
+                        DayButton: (props) => (
+                          <CustomDayButton {...props} linimasa={allEvents} />
+                        )
+                      }}
+                    />
+                  </div>
+                </div>
               )}
             </CardContent>
           </Card>
