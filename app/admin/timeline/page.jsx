@@ -180,17 +180,14 @@ function CreateSesiModal({ skemaOptions, onSesiCreated }) {
           </div>
           <div className="space-y-2">
             <Label htmlFor="tanggal-sesi">Tanggal</Label>
-            <Popover>
-              <PopoverTrigger asChild>
-                <Button id="tanggal-sesi" variant={"outline"} className="w-full justify-start text-left font-normal">
-                  <CalendarIcon className="mr-2 h-4 w-4" />
-                  {tanggal ? tanggal.toLocaleDateString("id-ID") : <span>Pilih tanggal</span>}
-                </Button>
-              </PopoverTrigger>
-              <PopoverContent className="w-auto p-0">
-                <Calendar mode="single" selected={tanggal} onSelect={setTanggal} initialFocus />
-              </PopoverContent>
-            </Popover>
+            <Input
+              id="tanggal-sesi"
+              type="date"
+              value={tanggal ? tanggal.toISOString().slice(0,10) : ""}
+              onChange={(e) => setTanggal(e.target.value ? new Date(e.target.value) : null)}
+              className="mt-1"
+              required
+            />
           </div>
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-2">
@@ -326,17 +323,14 @@ function CreateLinimasaModal({ skemaOptions, asesorList, onEventCreated }) {
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-2">
               <Label htmlFor="tanggal-kegiatan">Tanggal</Label>
-              <Popover>
-                <PopoverTrigger asChild>
-                  <Button id="tanggal-kegiatan" variant={"outline"} className="w-full justify-start text-left font-normal">
-                    <CalendarIcon className="mr-2 h-4 w-4" />
-                    {tanggal ? tanggal.toLocaleDateString("id-ID") : <span>Pilih tanggal</span>}
-                  </Button>
-                </PopoverTrigger>
-                <PopoverContent className="w-auto p-0">
-                  <Calendar mode="single" selected={tanggal} onSelect={setTanggal} initialFocus />
-                </PopoverContent>
-              </Popover>
+              <Input
+                id="tanggal-kegiatan"
+                type="date"
+                value={tanggal ? tanggal.toISOString().slice(0,10) : ""}
+                onChange={(e) => setTanggal(e.target.value ? new Date(e.target.value) : null)}
+                className="mt-1"
+                required
+              />
             </div>
             <div className="space-y-2">
               <Label htmlFor="waktu-kegiatan">Waktu (WIB)</Label>

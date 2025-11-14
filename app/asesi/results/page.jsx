@@ -39,7 +39,7 @@ export default function ResultsPage() {
     return (
       <div className={`flex items-center gap-2 ${isKompeten ? "text-green-600" : "text-red-600"}`}>
         {isKompeten ? <CheckCircle2 className="w-6 h-6" /> : <AlertCircle className="w-6 h-6" />}
-        <span className="text-2xl font-bold">{status}</span>
+        <span className="text-1xl font-bold">{status}</span>
       </div>
     )
   }
@@ -63,14 +63,14 @@ export default function ResultsPage() {
             <CardContent className="pt-6">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-sm text-muted-foreground mb-1">Status Akhir</p>
-                  <p className={`text-4xl font-bold ${hasil?.statusAkhir === "KOMPETEN" ? "text-green-700" : "text-red-700"}`}>
+                  <p className="text-2xl text-muted-foreground mb-1">Status Akhir</p>
+                  <p className={`text-3xl font-bold ${hasil?.statusAkhir === "KOMPETEN" ? "text-green-700" : "text-red-700"}`}>
                     {hasil?.statusAkhir}
                   </p>
                 </div>
                 <div>
                   {hasil?.statusAkhir === "KOMPETEN" ? (
-                    <CheckCircle2 className="w-20 h-20 text-green-600" />
+                    <CheckCircle2 className="text-2xl w-15 h-20 text-green-600" />
                   ) : (
                     <AlertCircle className="w-20 h-20 text-red-600" />
                   )}
@@ -108,7 +108,6 @@ export default function ResultsPage() {
             
             <Card className="border-2">
               <CardHeader className="flex flex-row items-center gap-4 space-y-0">
-                <NotebookText className="w-8 h-8 text-blue-600" />
                 <div>
                   <CardTitle className="text-lg">Ujian Praktikum</CardTitle>
                   <CardDescription>Penilaian studi kasus (upload file .ppt)</CardDescription>
@@ -121,7 +120,6 @@ export default function ResultsPage() {
 
             <Card className="border-2">
               <CardHeader className="flex flex-row items-center gap-4 space-y-0">
-                 <Mic className="w-8 h-8 text-purple-600" />
                 <div>
                   <CardTitle className="text-lg">Unjuk Diri</CardTitle>
                   <CardDescription>Penilaian presentasi di hadapan asesor</CardDescription>
@@ -134,7 +132,6 @@ export default function ResultsPage() {
 
             <Card className="border-2">
               <CardHeader className="flex flex-row items-center gap-4 space-y-0">
-                <Brain className="w-8 h-8 text-orange-600" />
                 <div>
                   <CardTitle className="text-lg">Ujian Teori (Akumulasi)</CardTitle>
                   <CardDescription>Akumulasi kelulusan dari semua unit kompetensi.</CardDescription>
@@ -162,7 +159,7 @@ export default function ResultsPage() {
                              {unit.soalSesuai} dari {unit.soalTotal} soal dinyatakan "SESUAI"
                            </p>
                         </div>
-                        <p className={`text-sm font-bold ${unit.status === "KOMPETEN" ? "text-green-600" : "text-red-600"}`}>
+                        <p className={`text-1xl font-bold  ${unit.status === "KOMPETEN" ? "text-green-600" : "text-red-600"}`}>
                           {unit.status}
                         </p>
                       </div>

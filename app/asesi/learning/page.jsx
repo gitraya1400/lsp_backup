@@ -16,7 +16,7 @@ import {
   mockGetProgressAsesi,
   mockMarkMateriViewed
 } from "@/lib/api-mock"
-import { ChevronDown, ChevronUp, CheckCircle2, Clock, Lock, Check, BookOpen } from "lucide-react"
+import { ChevronDown, ChevronUp, CheckCircle2, Clock, Lock, Check, BookOpen, FileText, Link as LinkIcon, PlayCircle } from "lucide-react"
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible"
 import Link from "next/link" 
 import { Spinner } from "@/components/ui/spinner"
@@ -302,40 +302,41 @@ export default function LearningPage() {
                                 const isMateriViewed = viewedMateri.has(m.id);
                                 const isViewingThisMateri = viewingMateriId === m.id;
 
+                                const iconBg = m.jenis === "VIDEO" ? "bg-red-700" : m.jenis === "PDF" ? "bg-blue-100" : "bg-green-100";
+
                                 return (
-                                  <div key={m.id} className="flex items-center gap-3 p-3 bg-muted/50 rounded-lg">
-                                    <div className="flex-shrink-0 w-6 h-6 flex items-center justify-center bg-primary/20 rounded">
-                                      <span className="text-xs font-medium">{midx + 1}</span>
-                                    </div>
-                                    <div className="flex-1 min-w-0">
-                                      <p className="font-medium text-sm">{m.judul}</p>
-                                      <p className="text-xs text-muted-foreground">{m.jenis}</p>
-                                    </div>
-                                    
-                                    <Button
-                                      variant="outline"
-                                      size="sm"
-                                      disabled={isLocked || isViewingThisMateri}
-                                      onClick={() => handleViewMateri(m)}
-                                      className={`w-28 ${isMateriViewed ? "text-green-600 border-green-200" : "text-gray-700 border-gray-300 hover:text-gray-900 hover:border-gray-400"}`}
-                                    >
-                                      {isViewingThisMateri ? (
-                                        <Spinner className="w-4 h-4" />
-                                      ) : isMateriViewed ? (
-                                        <>
-                                          <Check className="w-4 h-4 mr-2" />
-                                          Review
-                                        </>
-                                      ) : (
-                                        <>
-                                         <BookOpen className="w-4 h-4 mr-2" />
-                                          Buka
+                                    <div key={m.id} className="flex items-center gap-3 p-3 bg-muted/50 rounded-lg">
+                                      <div className={`flex-shrink-0 w-6 h-6 flex items-center justify-center rounded-full`}>
+                                      </div>
+                                      <div className="flex-1 min-w-0">
+                                        <p className="font-medium text-sm">{m.judul}</p>
+                                        <p className="text-xs text-muted-foreground">{m.jenis}</p>
+                                      </div>
+                                      
+                                      <Button
+                                        variant="outline"
+                                        size="sm"
+                                        disabled={isLocked || isViewingThisMateri}
+                                        onClick={() => handleViewMateri(m)}
+                                        className={`w-28 ${isMateriViewed ? "text-green-600 border-green-200" : "text-gray-700 border-gray-300 hover:text-gray-900 hover:border-gray-400"}`}
+                                      >
+                                        {isViewingThisMateri ? (
+                                          <Spinner className="w-4 h-4 mr-2" />
+                                        ) : isMateriViewed ? (
+                                          <>
+                                            <Check className="w-4 h-4 mr-2" />
+                                            Review
                                           </>
-                                      )}
-                                    </Button>
-                                  </div>
-                                )
-                              })}
+                                        ) : (
+                                          <>
+                                            <BookOpen className="w-4 h-4 mr-2" />
+                                            Buka
+                                          </>
+                                        )}
+                                      </Button>
+                                    </div>
+                                  )
+                                })}
                             </div>
 
                             {!isLocked && !isCompleted && (

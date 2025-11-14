@@ -929,10 +929,22 @@ export default function SchemaPage() {
                   </TabsTrigger>
                 ))}
               </TabsList>
-              <Button onClick={() => setIsSkemaDialogOpen(true)}>
-                <Plus className="w-4 h-4 mr-2" />
-                Tambah Skema Baru
-              </Button>
+              <div className="flex items-center gap-2">
+                <Button
+                  variant="destructive"
+                  onClick={() => setIsDeleteAlertOpen(true)}
+                  disabled={!activeSkemaTab || isDeletingSkema}
+                  title={!activeSkemaTab ? "Pilih skema terlebih dahulu" : "Hapus skema aktif"}
+                >
+                  {isDeletingSkema ? <Spinner className="w-4 h-4 mr-2" /> : <Trash2 className="w-4 h-4 mr-2" />}
+                  Hapus Skema
+                </Button>
+
+                <Button onClick={() => setIsSkemaDialogOpen(true)}>
+                  <Plus className="w-4 h-4 mr-2" />
+                  Tambah Skema Baru
+                </Button>
+              </div>
             </div>
 
             {skemaList.map((skema) => (
@@ -944,30 +956,6 @@ export default function SchemaPage() {
               >
                 <SkemaContentManager skemaId={skema.id} />
                 
-                {/* Tambahkan ini untuk zona hapus skema */}
-                <div className="mt-8 border-t pt-6">
-                  <div className="mt- 4 flex items-center justify-between p-4 border border-red-200 rounded-lg bg-red-50">
-                    <div>
-                      <h3 className="font-medium">Hapus Skema Ini</h3>
-                      <p className="mr-3 text-sm text-gray-600">
-                        Menghapus skema akan menghapus semua unit, materi, dan soal terkait.
-                        Aksi ini tidak dapat dibatalkan.
-                      </p>
-                    </div>
-                    <Button 
-                      variant="destructive"
-                      onClick={() => setIsDeleteAlertOpen(true)}
-                      disabled={isDeletingSkema}
-                    >
-                      {isDeletingSkema ? (
-                        <Spinner className="w-4 h-4 mr-2" />
-                      ) : (
-                        <Trash2 className="w-4 h-4 mr-2" />
-                      )}
-                      Hapus Skema
-                    </Button>
-                  </div>
-                </div>
               </TabsContent>
             ))}
 

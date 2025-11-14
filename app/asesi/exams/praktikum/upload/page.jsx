@@ -47,6 +47,8 @@ export default function UploadPraktikumPage() {
         const progressData = await mockGetProgressAsesi(user.id)
         setProgress(progressData)
 
+        console.log("Progress Data:", progressData);
+
         if (!progressData.tryoutSelesai) {
           alert("Anda harus menyelesaikan tryout terlebih dahulu sebelum mengunggah praktikum.")
           router.push("/asesi/exams")

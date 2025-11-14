@@ -121,7 +121,11 @@ export default function PraAsesmenPage() {
                   <Label htmlFor="nim">NIM (*)</Label>
                   <Input id="nim" value={user?.nim || ""} readOnly disabled className="mt-1 bg-gray-100" />
                 </div>
-                 <div>
+                <div>
+                  <Label htmlFor="kelas">Kelas</Label>
+                  <Input id="kelas" value={user?.kelas || "N/A"} readOnly disabled className="mt-1 bg-gray-100" />
+                </div>
+                <div>
                   <Label htmlFor="skema">Skema (*)</Label>
                   <Input id="skema" value={user?.skemaId || ""} readOnly disabled className="mt-1 bg-gray-100" />
                 </div>

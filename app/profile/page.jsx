@@ -61,35 +61,16 @@ export default function ProfilePage() {
         <Card>
           <CardHeader>
             <CardTitle>Informasi Akun</CardTitle>
-            <CardDescription>
-              Informasi ini diambil dari sistem. Hubungi admin untuk perubahan data krusial.
-            </CardDescription>
           </CardHeader>
           <CardContent className="space-y-6">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-5">
               <InfoRow icon={Mail} label="Email" value={user.email} />
               <InfoRow icon={Shield} label="Role Sistem" value={getRoleDisplay(user.role)} />
-              <InfoRow icon={Hash} label="NIM (jika Asesi)" value={user.nim} />
-              <InfoRow icon={Briefcase} label="NIP (jika Asesor/Admin)" value={user.nip} />
-              <InfoRow icon={Star} label="Skema (jika Asesi)" value={user.skemaId} />
-              <InfoRow icon={User} label="Kelas (jika Asesi)" value={user.kelas} />
+              <InfoRow icon={Hash} label="NIM" value={user.nim} />
+              <InfoRow icon={Briefcase} label="NIP" value={user.nip} />
+              <InfoRow icon={Star} label="Skema" value={user.skemaId} />
+              <InfoRow icon={User} label="Kelas" value={user.kelas} />
             </div>
-          </CardContent>
-        </Card>
-
-        {/* Kartu Pengaturan (Placeholder) */}
-        <Card>
-          <CardHeader>
-            <CardTitle>Pengaturan Keamanan</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <Button disabled>
-              <KeyRound className="w-4 h-4 mr-2" />
-              Ubah Password
-            </Button>
-            <p className="text-sm text-muted-foreground">
-              Fitur ubah profil dan password akan tersedia di versi mendatang.
-            </p>
           </CardContent>
         </Card>
       </div>

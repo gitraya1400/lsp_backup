@@ -15,7 +15,8 @@ import {
   mockGetSoalForUnit, 
   mockGetUnitsForSkema, 
   mockSubmitUjianTeori,
-  mockGetExamStatus 
+  mockGetExamStatus,
+  mockGetProgressAsesi
 } from "@/lib/api-mock"
 import Link from "next/link"
 
@@ -72,17 +73,21 @@ export default function TeoriExamRunPage() {
 
   const handleSubmitExam = useCallback(async () => {
     if (!user) return;
-    
-    setIsExamActive(false)
-    closeFullscreen(); 
-    
-    console.log("Ujian Teori submitted with answers:", answers)
+
+    setIsExamActive(false);
+    closeFullscreen();
+
+    console.log("Ujian Teori submitted with answers:", answers);
     await mockSubmitUjianTeori(user.id, answers);
-    
-    clearExamState(); 
-    
-    alert("Ujian Teori selesai! Jawaban Anda telah dikirim untuk dinilai.")
-    router.push("/asesi/exams")
+
+    // Memperbarui progres setelah submit
+    const updatedProgress = await mockGetProgressAsesi(user.id);
+    setProgress(updatedProgress); // Update state dengan progres terbaru
+
+    clearExamState();
+
+    alert("Ujian Teori selesai! Jawaban Anda telah dikirim untuk dinilai.");
+    router.push("/asesi/exams");
   }, [answers, user, router, clearExamState])
 
   useEffect(() => {
@@ -368,7 +373,7 @@ export default function TeoriExamRunPage() {
               </CardContent>
             </Card>
             
-            <div className="flex gap-3">
+            <div className="flex-4">
               <Button variant="outline" onClick={handlePreviousQuestion} disabled={currentQuestionIndex === 0}>
                 Sebelumnya
               </Button>
@@ -376,7 +381,7 @@ export default function TeoriExamRunPage() {
                 variant="outline"
                 onClick={handleNextQuestion}
                 disabled={currentQuestionIndex === soal.length - 1}
-                className="flex-1"
+                className=""
               >
                 Selanjutnya
               </Button>

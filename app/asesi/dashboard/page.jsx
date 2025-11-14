@@ -119,6 +119,8 @@ export default function AsesiDashboard() {
     if (progress.ujianTeoriSelesai) total += 15; 
     
     if (progress.ujianPraktikumSelesai) total += 15; 
+
+    if (progress.ujianUnjukDiriSelesai) total += 15;
     
     return Math.round(total);
   }, [progress]);
