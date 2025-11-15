@@ -164,62 +164,60 @@ function CreateLinimasaModal({ skemaOptions, asesorList, onEventCreated }) {
   const [error, setError] = useState(null);
 
   const handleSubmit = async (e) => {
-    e.preventDefault();
-    setError(null);
-    
-    // --- (REVISI VALIDASI) ---
-    // Field wajib dasar (ditangani oleh 'required' di HTML)
-    const missingFields = [];
-    if (!judul) missingFields.push("Judul");
-    if (!deskripsi) missingFields.push("Deskripsi");
-    if (!tanggal) missingFields.push("Tanggal");
-    
-    // Validasi tambahan untuk Sesi Pembelajaran
-    if (tipe === "PEMBELAJARAN") {
-      if (!waktu) missingFields.push("Waktu");
-      if (!urlZoom) missingFields.push("URL Zoom");
-    }
-    
-    // Fallback jika 'required' gagal
-    if (missingFields.length > 0) {
-      setError(`Harap isi semua bidang yang wajib diisi (*).`);
+  e.preventDefault();
+  setError(null);
+
+  // Validasi khusus untuk dropdown (Pemateri jika tipe PEMBELAJARAN)
+  if (tipe === "PEMBELAJARAN" && !pemateriAsesorId) {
+    setError("Bidang Pemateri wajib dipilih.");
+    return;
+  }
+
+  // Validasi Tanggal
+  if (!tanggal) {
+    setError("Bidang Tanggal wajib diisi.");
+    return;
+  }
+
+  const now = new Date();
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  const selectedDate = new Date(tanggal);
+  selectedDate.setHours(0, 0, 0, 0);
+
+  // 1. Cek Tanggal tidak boleh di masa lalu
+  if (selectedDate < today) {
+    setError("Tanggal kegiatan tidak boleh sebelum hari ini.");
+    return;
+  }
+
+  const isToday = selectedDate.toDateString() === today.toDateString();
+
+  // 2. Validasi Waktu (khusus untuk tipe PEMBELAJARAN)
+  if (tipe === "PEMBELAJARAN") {
+    if (!waktu) {
+      setError("Bidang Waktu wajib diisi untuk Sesi Pembelajaran.");
       return;
     }
 
-    const now = new Date();
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-    const selectedDate = new Date(tanggal);
-    selectedDate.setHours(0, 0, 0, 0);
-
-    // 1. Cek Tanggal
-    if (selectedDate < today) {
-      setError("Tanggal kegiatan tidak boleh sebelum hari ini.");
+    // Cek Format Waktu
+    if (!isValidTimeFormat(waktu)) {
+      setError("Format waktu tidak valid. Gunakan format HH:MM (contoh: 09:00 atau 14:30)");
       return;
     }
 
-    const isToday = selectedDate.toDateString() === today.toDateString();
-
-    // 2. Cek Format Waktu
-    if (waktu && waktu !== "Sepanjang hari" && !isValidTimeFormat(waktu)) {
-      setError(
-        "Format waktu tidak valid. Gunakan format HH:MM (contoh: 09:00 atau 14:30)"
-      );
-      return;
-    }
-    
-    // 3. Cek Waktu di Masa Lalu (hanya jika hari ini dan bukan pengumuman)
-    if (isToday && tipe !== "PENGUMUMAN" && waktu && waktu !== "Sepanjang hari") {
+    // 3. Cek Waktu di Masa Lalu (jika hari ini)
+    if (isToday) {
       const [hours, minutes] = waktu.split(':').map(Number);
-      const selectedDateTime = new Date(tanggal); // ambil tanggal aslinya
+      const selectedDateTime = new Date();
       selectedDateTime.setHours(hours, minutes, 0, 0);
 
-      if (selectedDateTime < now) {
-        setError("Waktu kegiatan tidak boleh di masa lalu untuk tanggal hari ini.");
+      if (selectedDateTime <= now) {
+        setError("Waktu kegiatan harus lebih dari waktu saat ini untuk tanggal hari ini.");
         return;
       }
     }
-    // --- (BATAS REVISI VALIDASI) ---
+  }
 
     setIsSubmitting(true);
     try {
@@ -372,7 +370,7 @@ function CreateLinimasaModal({ skemaOptions, asesorList, onEventCreated }) {
                 />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="pemateri-asesor">Pemateri (Opsional)</Label>
+                <Label htmlFor="pemateri-asesor">Pemateri *</Label>
                 <Select
                   value={pemateriAsesorId}
                   onValueChange={setPemateriAsesorId}
@@ -429,46 +427,65 @@ function CreateSesiModal({ skemaOptions, onSesiCreated }) {
   const [error, setError] = useState(null);
 
   const handleSubmit = async (e) => {
-    e.preventDefault();
-    setError(null);
-    
-    // --- (REVISI VALIDASI) ---
-    // Validasi field wajib ditangani 'required' di HTML
-    // Blok 'missingFields' dihapus
+  e.preventDefault();
+  setError(null);
 
-    const now = new Date();
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-    const selectedDate = new Date(tanggal);
-    selectedDate.setHours(0, 0, 0, 0);
+  // Validasi khusus untuk dropdown
+  const missingDropdowns = [];
+  if (!skemaId) missingDropdowns.push("Skema");
+  if (!tipeUjian) missingDropdowns.push("Tipe Sesi Ujian");
 
-    // 1. Cek Tanggal
-    if (selectedDate < today) {
-      setError("Tanggal ujian tidak boleh sebelum hari ini.");
+  if (missingDropdowns.length > 0) {
+    if (missingDropdowns.length === 1) {
+      setError(`Bidang ${missingDropdowns[0]} wajib dipilih.`);
+    } else {
+      setError(`Bidang ${missingDropdowns.join(" dan ")} wajib dipilih.`);
+    }
+    return;
+  }
+
+  // Validasi Tanggal
+  if (!tanggal) {
+    setError("Bidang Tanggal wajib diisi.");
+    return;
+  }
+
+  const now = new Date();
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  const selectedDate = new Date(tanggal);
+  selectedDate.setHours(0, 0, 0, 0);
+
+  // 1. Cek Tanggal tidak boleh di masa lalu
+  if (selectedDate < today) {
+    setError("Tanggal ujian tidak boleh sebelum hari ini.");
+    return;
+  }
+
+  // 2. Validasi Waktu
+  if (!waktu) {
+    setError("Bidang Waktu wajib diisi.");
+    return;
+  }
+
+  // Cek Format Waktu
+  if (!isValidTimeFormat(waktu)) {
+    setError("Format waktu tidak valid. Gunakan format HH:MM (contoh: 09:00 atau 14:30)");
+    return;
+  }
+  
+  // 3. Cek Waktu di Masa Lalu (jika hari ini)
+  const isToday = selectedDate.toDateString() === today.toDateString();
+  if (isToday) {
+    const [hours, minutes] = waktu.split(':').map(Number);
+    const selectedDateTime = new Date();
+    selectedDateTime.setHours(hours, minutes, 0, 0);
+
+    if (selectedDateTime <= now) {
+      setError("Waktu ujian harus lebih dari waktu saat ini untuk tanggal hari ini.");
       return;
     }
-    
-    // 2. Cek Format Waktu
-    if (!isValidTimeFormat(waktu)) {
-      setError(
-        "Format waktu tidak valid. Gunakan format HH:MM (contoh: 09:00 atau 14:30)"
-      );
-      return;
-    }
-    
-    // 3. Cek Waktu di Masa Lalu (jika hari ini)
-    const isToday = selectedDate.toDateString() === today.toDateString();
-    if (isToday && waktu) {
-      const [hours, minutes] = waktu.split(':').map(Number);
-      const selectedDateTime = new Date(tanggal); // ambil tanggal aslinya
-      selectedDateTime.setHours(hours, minutes, 0, 0);
-
-      if (selectedDateTime < now) {
-        setError("Waktu ujian tidak boleh di masa lalu untuk tanggal hari ini.");
-        return;
-      }
-    }
-    // --- (BATAS REVISI VALIDASI) ---
+  }
 
     setIsSubmitting(true);
     try {
@@ -1383,11 +1400,12 @@ export default function TimelinePage() {
 
           <div className="md:col-span-1 space-y-4">
             <h2 className="text-xl font-semibold">
-              Kegiatan pada{" "}
+              Kegiatan {" "}
               {new Date(selectedDateStr).toLocaleDateString("id-ID", {
                 weekday: "long",
                 day: "numeric",
                 month: "long",
+                year: "numeric",
               })}
             </h2>
             {loading ? (
