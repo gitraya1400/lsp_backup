@@ -81,7 +81,7 @@ export default function PraAsesmenPage() {
 
   return (
     <MainLayout>
-      <div className="p-6 space-y-6 max-w-4xl mx-auto">
+      <div className="p-6 space-y-6">
         {/* Header */}
         <div>
           <h1 className="text-3xl font-bold">Pra-Asesmen</h1>

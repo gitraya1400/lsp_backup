@@ -1272,7 +1272,7 @@ if (totalAssignedAsesiCount > 0 && totalAssignedAsesiCount < asesiInClass.length
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogAction onClick={() => setSuccessDialog({ open: false, message: "" })}>
-              Lanjut
+              Lanjutkan
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

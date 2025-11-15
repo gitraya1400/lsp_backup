@@ -51,9 +51,13 @@ const SoalList = ({ soal, loading, onEdit }) => {
 };
 
 // ===============================================================
-// --- KOMPONEN BARU UNTUK NGURUS KONTEN TIAP SKEMA ---
+// --- KOMPONEN UNTUK KONTEN SKEMA (DIREFAKTOR) ---
 // ===============================================================
-const SkemaContentManager = ({ skemaId }) => {
+const SkemaContentManager = ({ 
+  skemaId, 
+  activeContentTab, 
+  setInfoDialog 
+}) => {
   const [units, setUnits] = useState([]);
   const [selectedUnit, setSelectedUnit] = useState(null);
 
@@ -65,18 +69,36 @@ const SkemaContentManager = ({ skemaId }) => {
   const [loadingUnits, setLoadingUnits] = useState(true);
   const [loadingContent, setLoadingContent] = useState(false);
 
+<<<<<<< Updated upstream
+=======
+  const [isSavingUnit, setIsSavingUnit] = useState(false);
+
+>>>>>>> Stashed changes
   const [isUnitDialogOpen, setIsUnitDialogOpen] = useState(false);
   const [isMateriDialogOpen, setIsMateriDialogOpen] = useState(false);
   const [isSoalDialogOpen, setIsSoalDialogOpen] = useState(false);
 
+  const [deleteUnitTarget, setDeleteUnitTarget] = useState(null);
+  const [deleteMateriTarget, setDeleteMateriTarget] = useState(null);
+  const [deleteSoalTarget, setDeleteSoalTarget] = useState(null);
+
   const [unitForm, setUnitForm] = useState({ id: null, nomorUnit: "", judul: "", deskripsi: "", durasiTeori: 15 });
+<<<<<<< Updated upstream
   const [materiForm, setMateriForm] = useState({ id: null, judul: "", jenis: "VIDEO", urlKonten: "" });
+=======
+  const [materiForm, setMateriForm] = useState({
+    id: null,
+    judul: "",
+    jenis: "VIDEO", 
+    urlKonten: "",
+    file: null
+  });
+>>>>>>> Stashed changes
   
-  // --- (REVISI STATE SOAL) ---
   const [soalForm, setSoalForm] = useState({
     id: null, teks: "", tipeSoal: "UJIAN_TEORI", tipeJawaban: "ESAI",
     pilihan: ["", "", "", ""], kunciJawaban: "",
-    filePendukung: [], // Menggantikan fileTemplateSoal
+    filePendukung: [], 
   });
 
   useEffect(() => {
@@ -130,35 +152,33 @@ const SkemaContentManager = ({ skemaId }) => {
     }
   };
 
-  // --- (REVISI HANDLER MODAL) ---
   const handleOpenSoalModal = (tipeSoalDefault, soalData = null) => {
     if (soalData) {
       setSoalForm({
         ...soalData,
         pilihan: soalData.pilihan || ["", "", "", ""],
         kunciJawaban: soalData.kunciJawaban || "",
-        filePendukung: soalData.filePendukung || [], // <-- Direvisi
+        filePendukung: soalData.filePendukung || [], 
       });
     } else {
       setSoalForm({
         id: null, teks: "", tipeSoal: tipeSoalDefault,
         tipeJawaban: tipeSoalDefault === "UJIAN_PRAKTIKUM" ? "UPLOAD_FILE" : "ESAI",
         pilihan: ["", "", "", ""], kunciJawaban: "", 
-        filePendukung: [], // <-- Direvisi
+        filePendukung: [], 
       });
     }
     setIsSoalDialogOpen(true);
   };
   
-  // --- (HANDLER BARU UNTUK FILE UPLOAD SIMULASI) ---
   const handleFileChange = (e) => {
     if (e.target.files) {
       const files = Array.from(e.target.files);
       const newFiles = files.map(file => ({
-        id: `temp-${file.name}`, // ID sementara
+        id: `temp-${file.name}`, 
         nama: file.name,
         size: `${(file.size / 1024).toFixed(1)} KB`,
-        url: `/api/mock-download/${file.name}` // URL aman simulasi
+        url: `/api/mock-download/${file.name}` 
       }));
       
       setSoalForm(prev => ({
@@ -174,29 +194,253 @@ const SkemaContentManager = ({ skemaId }) => {
         filePendukung: prev.filePendukung.filter(f => f.nama !== fileName)
       }));
   };
-  // --- (BATAS HANDLER BARU) ---
 
+<<<<<<< Updated upstream
 
   const handleSaveUnit = () => { alert("CRUD Unit belum diimplementasikan"); setIsUnitDialogOpen(false); };
   const handleSaveMateri = () => { alert("CRUD Materi belum diimplementasikan"); setIsMateriDialogOpen(false); };
   const handleSaveSoal = () => { alert("CRUD Soal belum diimplementasikan"); setIsSoalDialogOpen(false); };
+=======
+  // --- PERUBAHAN: onSubmit handler ditambahkan (e) ---
+  const handleSaveUnit = async (e) => {
+    e.preventDefault(); // Mencegah reload halaman
+    if (isSavingUnit) return;
+    try {
+      setIsSavingUnit(true);
+      // Validasi JS untuk 'required' sudah dihapus, ditangani HTML5
+      
+      const payload = {
+        nomorUnit: Number(unitForm.nomorUnit) || undefined,
+        kodeUnit: unitForm.kodeUnit,
+        judul: unitForm.judul,
+        deskripsi: unitForm.deskripsi,
+        durasiTeori: Number(unitForm.durasiTeori) || 15,
+      };
+
+      if (unitForm.id) {
+        const updated = await mockUpdateUnit(skemaId, unitForm.id, payload);
+        const fresh = await mockGetUnitsForSkema(skemaId);
+        setUnits(fresh || []);
+        if (selectedUnit?.id === updated.id) setSelectedUnit(updated);
+      } else {
+        await mockCreateUnit(skemaId, payload);
+        const fresh = await mockGetUnitsForSkema(skemaId);
+        setUnits(fresh || []);
+        const last = (fresh || []).slice(-1)[0];
+        if (last) await selectUnit(last);
+      }
+
+      setIsUnitDialogOpen(false);
+      setUnitForm({ id: null, nomorUnit: "", judul: "", deskripsi: "", durasiTeori: 15 });
+    } catch (err) {
+      console.error("Gagal menyimpan unit:", err);
+      setInfoDialog({ open: true, title: "Gagal Menyimpan", message: `Gagal menyimpan unit: ${err.message}` });
+    } finally {
+      setIsSavingUnit(false);
+    }
+  };
+
+  const handleDeleteUnit = (unit) => {
+    setDeleteUnitTarget(unit);
+  };
+
+  const confirmDeleteUnit = async () => {
+    if (!deleteUnitTarget) return;
+    try {
+      await mockDeleteUnit(skemaId, deleteUnitTarget.id);
+      const freshUnits = await mockGetUnitsForSkema(skemaId);
+      setUnits(freshUnits || []);
+      
+      if (selectedUnit?.id === deleteUnitTarget.id) {
+        setSelectedUnit(null);
+        if (freshUnits && freshUnits.length > 0) {
+          await selectUnit(freshUnits[0]);
+        }
+      }
+    } catch (err) {
+      console.error("Gagal menghapus unit:", err);
+      setInfoDialog({ open: true, title: "Gagal Menghapus", message: `Gagal menghapus unit: ${err.message}` });
+    } finally {
+      setDeleteUnitTarget(null);
+    }
+  };
+
+  // --- PERUBAHAN: onSubmit handler ditambahkan (e) ---
+  const handleSaveMateri = async (e) => {
+    e.preventDefault(); // Mencegah reload halaman
+    
+    // Validasi JS untuk 'judul' sudah dihapus (ditangani HTML 'required')
+    // Validasi kondisional tetap dipertahankan
+    if (materiForm.jenis === "PDF" && !materiForm.file && !materiForm.urlKonten) {
+      setInfoDialog({ open: true, title: "Validasi Gagal", message: "Silakan pilih file PDF untuk materi." });
+      return;
+    }
+    
+    if ((materiForm.jenis === "VIDEO" || materiForm.jenis === "LINK") && !materiForm.urlKonten) {
+      setInfoDialog({ open: true, title: "Validasi Gagal", message: "URL wajib diisi untuk tipe Video/Link." });
+      return;
+    }
+
+    try {
+      const payload = {
+        judul: materiForm.judul,
+        jenis: materiForm.jenis,
+        urlKonten: materiForm.urlKonten,
+        file: materiForm.file
+      };
+
+      if (materiForm.id) {
+        await mockUpdateMateri(selectedUnit.id, materiForm.id, payload);
+      } else {
+        await mockCreateMateri(selectedUnit.id, payload);
+      }
+
+      const fresh = await mockGetMateriForUnit(selectedUnit.id);
+      setMateri(fresh || []);
+      
+      setIsMateriDialogOpen(false);
+      setMateriForm({ id: null, judul: "", jenis: "VIDEO", urlKonten: "", file: null });
+    } catch (err) {
+      console.error("Gagal menyimpan materi:", err);
+      setInfoDialog({ open: true, title: "Gagal Menyimpan", message: `Gagal menyimpan materi: ${err.message}` });
+    }
+  };
+
+  const handleDeleteMateri = (m) => {
+    setDeleteMateriTarget(m);
+  };
+
+  const confirmDeleteMateri = async () => {
+    if (!deleteMateriTarget) return;
+    try {
+      await mockDeleteMateri(selectedUnit.id, deleteMateriTarget.id);
+      const fresh = await mockGetMateriForUnit(selectedUnit.id);
+      setMateri(fresh || []);
+    } catch (err) {
+      console.error("Gagal menghapus materi:", err);
+      setInfoDialog({ open: true, title: "Gagal Menghapus", message: `Gagal menghapus materi: ${err.message}` });
+    } finally {
+      setDeleteMateriTarget(null);
+    }
+  };
+
+  // --- PERUBAHAN: onSubmit handler ditambahkan (e) ---
+  const handleSaveSoal = async (e) => {
+     e.preventDefault(); // Mencegah reload halaman
+     
+     // Validasi JS untuk 'teks' sudah dihapus (ditangani HTML 'required')
+     // Validasi kondisional tetap dipertahankan
+     try {
+       if (soalForm.tipeSoal === "UJIAN_TEORI") {
+         if (!selectedUnit) {
+           setInfoDialog({ open: true, title: "Validasi Gagal", message: "Pilih unit dulu sebelum menambah soal teori." });
+           return;
+         }
+         if (soalForm.id) {
+           await mockUpdateSoal(selectedUnit.id, soalForm.id, soalForm);
+         } else {
+           await mockCreateSoal(selectedUnit.id, { ...soalForm, tipeSoal: "UJIAN_TEORI" });
+         }
+         const teori = await mockGetSoalForUnit(selectedUnit.id, "UJIAN_TEORI");
+         setSoalTeori(teori || []);
+       } else if (soalForm.tipeSoal === "TRYOUT") {
+         if (soalForm.id) {
+           await mockUpdateSoal(null, soalForm.id, soalForm);
+         } else {
+           await mockCreateTryout(skemaId, soalForm);
+         }
+         const tryoutData = await mockGetSoalTryoutGabungan(skemaId);
+         setSoalTryout(tryoutData || []);
+       } else if (soalForm.tipeSoal === "UJIAN_PRAKTIKUM") {
+         await mockUpsertPraktikum(skemaId, soalForm);
+         const praktikumData = await mockGetSoalPraktikumGabungan(skemaId);
+         setSoalPraktikum(praktikumData || []);
+       }
+
+       setIsSoalDialogOpen(false);
+     } catch (err) {
+       console.error("Gagal menyimpan soal:", err);
+       setInfoDialog({ open: true, title: "Gagal Menyimpan", message: `Gagal menyimpan soal: ${err.message}` });
+     }
+  };
+
+  const handleDeleteSoal = (soal) => {
+    setDeleteSoalTarget(soal);
+  };
+
+  const confirmDeleteSoal = async () => {
+    if (!deleteSoalTarget) return;
+    try {
+      await mockDeleteSoal(skemaId, deleteSoalTarget.id);
+      setSoalTeori(prev => prev.filter(s => s.id !== deleteSoalTarget.id));
+      setSoalTryout(prev => prev.filter(s => s.id !== deleteSoalTarget.id));
+      setSoalPraktikum(prev => prev.filter(s => s.id !== deleteSoalTarget.id));
+      
+      if (deleteSoalTarget.unitId && selectedUnit?.id === deleteSoalTarget.unitId) {
+        const teori = await mockGetSoalForUnit(selectedUnit.id, "UJIAN_TEORI");
+        setSoalTeori(teori || []);
+      }
+    } catch (err) {
+      console.error("Gagal menghapus soal:", err);
+      setInfoDialog({ open: true, title: "Gagal Menghapus", message: `Gagal menghapus soal: ${err.message}` });
+    } finally {
+      setDeleteSoalTarget(null);
+    }
+  };
+  
+  const handleMateriFileChange = (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    
+    if (!file.name.toLowerCase().endsWith('.pdf')) {
+      setInfoDialog({ open: true, title: "File Tidak Sesuai", message: "Hanya file PDF yang diperbolehkan." });
+      return;
+    }
+
+    const fileMeta = {
+      nama: file.name,
+      size: `${(file.size / 1024).toFixed(1)} KB`,
+      url: `/api/mock-download/${file.name}`,
+      id: `temp-${file.name}-${Date.now()}`
+    };
+
+    setMateriForm(prev => ({ 
+      ...prev, 
+      file: fileMeta,
+      urlKonten: fileMeta.url 
+    }));
+  };
+
+  const loadPraktikumSoal = async () => {
+    try {
+      const data = await mockGetSoalPraktikumGabungan(skemaId);
+      setSoalPraktikum(data || []);
+    } catch (err) {
+      console.error("Gagal load praktikum:", err);
+      setSoalPraktikum([]);
+    }
+  };
+
+  useEffect(() => {
+    if (skemaId) {
+      loadPraktikumSoal();
+    }
+  }, [skemaId]);
+>>>>>>> Stashed changes
 
   return (
     <React.Fragment> 
-      <Tabs defaultValue="unit" className="w-full">
-        <TabsList className="grid w-full grid-cols-3">
-          <TabsTrigger value="unit">Unit Kompetensi & Soal Teori</TabsTrigger>
-          <TabsTrigger value="tryout">Bank Soal Tryout</TabsTrigger>
-          <TabsTrigger value="praktikum">Bank Soal Praktikum</TabsTrigger>
-        </TabsList>
-
+      <Tabs value={activeContentTab} className="w-full">
         <TabsContent value="unit" className="mt-4">
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
             <div className="lg:col-span-1 space-y-4">
               <Card>
                 <CardHeader className="flex flex-row items-center justify-between pb-4">
                   <CardTitle className="text-lg">Unit Kompetensi</CardTitle>
-                  <Button size="sm" onClick={() => setIsUnitDialogOpen(true)}>
+                  <Button size="sm" onClick={() => {
+                    setUnitForm({ id: null, nomorUnit: "", judul: "", deskripsi: "", durasiTeori: 15 }); // Reset form
+                    setIsUnitDialogOpen(true);
+                  }}>
                     <Plus className="w-4 h-4 mr-2" /> Tambah Unit
                   </Button>
                 </CardHeader>
@@ -250,7 +494,10 @@ const SkemaContentManager = ({ skemaId }) => {
                     <Card>
                       <CardHeader className="flex flex-row items-center justify-between">
                         <CardTitle className="text-lg">Daftar Materi</CardTitle>
-                        <Button size="sm" onClick={() => setIsMateriDialogOpen(true)}>
+                        <Button size="sm" onClick={() => {
+                          setMateriForm({ id: null, judul: "", jenis: "VIDEO", urlKonten: "", file: null }); // Reset form
+                          setIsMateriDialogOpen(true);
+                        }}>
                           <Plus className="w-4 h-4 mr-2" /> Tambah Materi
                         </Button>
                       </CardHeader>
@@ -292,7 +539,10 @@ const SkemaContentManager = ({ skemaId }) => {
                   <Card className="h-full flex items-center justify-center min-h-[300px]">
                       <CardContent className="text-center text-gray-500">
                         <p>Skema ini belum memiliki unit.</p>
-                        <Button size="sm" className="mt-4" onClick={() => setIsUnitDialogOpen(true)}>
+                        <Button size="sm" className="mt-4" onClick={() => {
+                          setUnitForm({ id: null, nomorUnit: "", judul: "", deskripsi: "", durasiTeori: 15 }); // Reset form
+                          setIsUnitDialogOpen(true);
+                        }}>
                           <Plus className="w-4 h-4 mr-2" /> Tambah Unit Pertama
                         </Button>
                       </CardContent>
@@ -330,31 +580,41 @@ const SkemaContentManager = ({ skemaId }) => {
           </Card>
         </TabsContent>
       </Tabs>
-
+      
+      {/* --- PERUBAHAN: Modal Unit dibungkus <form> --- */}
       <Dialog open={isUnitDialogOpen} onOpenChange={setIsUnitDialogOpen}>
         <DialogContent>
-          <DialogHeader>
-            <DialogTitle>{unitForm.id ? "Edit Unit" : "Tambah Unit Baru"}</DialogTitle>
-          </DialogHeader>
-          <div className="grid gap-4 py-4">
-            <p className="ml-1 pd-0"><b>Unit ke : </b></p>
-            <Input placeholder="Nomor Unit" value={unitForm.nomorUnit} onChange={(e) => setUnitForm({ ...unitForm, nomorUnit: e.target.value })} />
-            <p className="ml-1 pd-0"><b>Judul Unit : </b></p>
-            <Input placeholder="Judul Unit" value={unitForm.judul} onChange={(e) => setUnitForm({ ...unitForm, judul: e.target.value })} />
-            <h4 className="ml-1 pd-0 h-4">Deskripsi : </h4>
-            <Textarea placeholder="Deskripsi Unit" value={unitForm.deskripsi} onChange={(e) => setUnitForm({ ...unitForm, deskripsi: e.target.value })} />
-            <p className="ml-1 pd-0"><b>Durasi Ujian Teori (Menit) : </b></p>
-            <Input type="number" placeholder="Durasi Ujian Teori (menit)" value={unitForm.durasiTeori} onChange={(e) => setUnitForm({ ...unitForm, durasiTeori: e.target.value })} />
-          </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setIsUnitDialogOpen(false)}>Batal</Button>
-            <Button onClick={handleSaveUnit}>Simpan Unit</Button>
-          </DialogFooter>
+          <form id="unit-form" onSubmit={handleSaveUnit}>
+            <DialogHeader>
+              <DialogTitle>{unitForm.id ? "Edit Unit" : "Tambah Unit Baru"}</DialogTitle>
+            </DialogHeader>
+            <div className="grid gap-4 py-4">
+              <Label htmlFor="unit-nomor">Unit ke *</Label>
+              <Input id="unit-nomor" placeholder="Nomor Unit" value={unitForm.nomorUnit} onChange={(e) => setUnitForm({ ...unitForm, nomorUnit: e.target.value })} required />
+              
+              <Label htmlFor="unit-judul">Judul Unit *</Label>
+              <Input id="unit-judul" placeholder="Judul Unit" value={unitForm.judul} onChange={(e) => setUnitForm({ ...unitForm, judul: e.target.value })} required />
+              
+              <Label htmlFor="unit-deskripsi">Deskripsi</Label>
+              <Textarea id="unit-deskripsi" placeholder="Deskripsi Unit" value={unitForm.deskripsi} onChange={(e) => setUnitForm({ ...unitForm, deskripsi: e.target.value })} />
+              
+              <Label htmlFor="unit-durasi">Durasi Ujian Teori (Menit) *</Label>
+              <Input id="unit-durasi" type="number" placeholder="Durasi Ujian Teori (menit)" value={unitForm.durasiTeori} onChange={(e) => setUnitForm({ ...unitForm, durasiTeori: e.target.value })} required />
+            </div>
+            <DialogFooter>
+              <Button type="button" variant="outline" onClick={() => setIsUnitDialogOpen(false)}>Batal</Button>
+              <Button type="submit" form="unit-form" disabled={isSavingUnit}>
+                {isSavingUnit ? <Spinner className="w-4 h-4 mr-2" /> : "Simpan Unit"}
+              </Button>
+            </DialogFooter>
+          </form>
         </DialogContent>
       </Dialog>
 
+      {/* --- PERUBAHAN: Modal Materi dibungkus <form> --- */}
       <Dialog open={isMateriDialogOpen} onOpenChange={setIsMateriDialogOpen}>
         <DialogContent>
+<<<<<<< Updated upstream
           <DialogHeader>
             <DialogTitle>{materiForm.id ? "Edit Materi" : "Tambah Materi Baru"}</DialogTitle>
             <DialogDescription>Materi ini akan muncul di unit: {selectedUnit?.judul}</DialogDescription>
@@ -377,104 +637,257 @@ const SkemaContentManager = ({ skemaId }) => {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+=======
+          <form id="materi-form" onSubmit={handleSaveMateri}>
+            <DialogHeader>
+              <DialogTitle>{materiForm.id ? "Edit Materi" : "Tambah Materi Baru"}</DialogTitle>
+              <DialogDescription>Materi ini akan muncul di unit: {selectedUnit?.judul}</DialogDescription>
+            </DialogHeader>
+            <div className="grid gap-4 py-4">
+              <Label htmlFor="materi-judul">Judul Materi *</Label>
+              <Input 
+                id="materi-judul"
+                placeholder="Judul Materi" 
+                value={materiForm.judul} 
+                onChange={(e) => setMateriForm({ ...materiForm, judul: e.target.value })} 
+                required
+              />
+              
+              <Label htmlFor="materi-jenis">Jenis Materi *</Label>
+              <Select value={materiForm.jenis} onValueChange={(value) => setMateriForm({ ...materiForm, jenis: value })}>
+                <SelectTrigger id="materi-jenis"><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="VIDEO">Video (URL)</SelectItem>
+                  <SelectItem value="PDF">Dokumen PDF (Upload)</SelectItem>
+                  <SelectItem value="LINK">Link Eksternal</SelectItem>
+                </SelectContent>
+              </Select>
 
-      {/* --- (REVISI MODAL SOAL) --- */}
-      <Dialog open={isSoalDialogOpen} onOpenChange={setIsSoalDialogOpen}>
-        <DialogContent className="max-w-2xl">
-          <DialogHeader>
-            <DialogTitle>{soalForm.id ? "Edit Soal" : "Tambah Soal Baru"}</DialogTitle>
-            <DialogDescription>{soalForm.tipeSoal === "UJIAN_TEORI" ? `Soal ini akan muncul di unit: ${selectedUnit?.judul}` : `Soal ini untuk Bank Soal ${soalForm.tipeSoal}`}</DialogDescription>
-          </DialogHeader>
-          <div className="grid gap-4 py-4 max-h-[70vh] overflow-y-auto pr-4">
-            <Label>Tipe Soal</Label>
-            <Input value={soalForm.tipeSoal} disabled className="bg-gray-100" />
-            
-            <Label>Teks Pertanyaan / Instruksi</Label>
-            <Textarea placeholder="Tulis teks pertanyaan atau instruksi studi kasus di sini..." value={soalForm.teks} onChange={(e) => setSoalForm({ ...soalForm, teks: e.target.value })} rows={4} />
-            
-            <Label>Tipe Jawaban</Label>
-            <Select value={soalForm.tipeJawaban} onValueChange={(value) => setSoalForm({ ...soalForm, tipeJawaban: value })}>
-              <SelectTrigger><SelectValue placeholder="Pilih Tipe Jawaban..." /></SelectTrigger>
-              <SelectContent>
-                <SelectItem value="PILIHAN_GANDA">Pilihan Ganda (Nilai Otomatis)</SelectItem>
-                <SelectItem value="ESAI">Esai (Nilai Manual)</SelectItem>
-                <SelectItem value="UPLOAD_FILE">Upload File (Hanya Praktikum)</SelectItem>
-              </SelectContent>
-            </Select>
-            
-            {soalForm.tipeJawaban === "PILIHAN_GANDA" && (
-              <div className="space-y-2 border p-4 rounded-md">
-                <Label>Opsi Pilihan Ganda</Label>
-                {soalForm.pilihan.map((opsi, index) => (
-                  <Input key={index} placeholder={`Opsi ${String.fromCharCode(65 + index)}`} value={opsi} onChange={(e) => { const newPilihan = [...soalForm.pilihan]; newPilihan[index] = e.target.value; setSoalForm({ ...soalForm, pilihan: newPilihan }); }} />
-                ))}
-                <Label className="pt-2">Kunci Jawaban</Label>
-                <Input placeholder="Kunci Jawaban (contoh: A)" value={soalForm.kunciJawaban} onChange={(e) => setSoalForm({ ...soalForm, kunciJawaban: e.target.value })} />
-              </div>
-            )}
-            
-            {soalForm.tipeJawaban === "ESAI" && (
-              <div>
-                <Label>Kata Kunci (Opsional)</Label>
-                <Input placeholder="Kata kunci jawaban (untuk panduan asesor)" value={soalForm.kunciJawaban} onChange={(e) => setSoalForm({ ...soalForm, kunciJawaban: e.target.value })} />
-              </div>
-            )}
-            
-            {/* (BLOK UPLOAD_FILE DIGANTI TOTAL) */}
-            {soalForm.tipeJawaban === "UPLOAD_FILE" && (
-              <div className="space-y-4 border p-4 rounded-md">
-                <Label>File Pendukung (Dataset, Panduan, Template, dll)</Label>
-                
-                {/* Daftar File */}
-                <div className="space-y-2">
-                  {soalForm.filePendukung.length === 0 && (
-                    <p className="text-xs text-muted-foreground text-center py-2">Belum ada file pendukung.</p>
-                  )}
-                  {soalForm.filePendukung.map((file) => (
-                    <div key={file.id || file.nama} className="flex items-center justify-between p-2 bg-muted/50 rounded-md">
-                      <div className="flex items-center gap-2 overflow-hidden">
-                        <File className="w-4 h-4 text-primary flex-shrink-0" />
-                        <div className="overflow-hidden">
-                          <p className="text-sm font-medium truncate">{file.nama}</p>
-                          <p className="text-xs text-muted-foreground">{file.size}</p>
-                        </div>
+              {materiForm.jenis === "VIDEO" && (
+                <div>
+                  <Label htmlFor="materi-url-video">URL Video *</Label>
+                  <Input 
+                    id="materi-url-video"
+                    placeholder="https://youtube.com/..." 
+                    value={materiForm.urlKonten} 
+                    onChange={(e) => setMateriForm({ ...materiForm, urlKonten: e.target.value })}
+                    required 
+                  />
+                </div>
+              )}
+
+              {materiForm.jenis === "LINK" && (
+                <div>
+                  <Label htmlFor="materi-url-link">URL Link Eksternal *</Label>
+                  <Input 
+                    id="materi-url-link"
+                    placeholder="https://..." 
+                    value={materiForm.urlKonten} 
+                    onChange={(e) => setMateriForm({ ...materiForm, urlKonten: e.target.value })} 
+                    required
+                  />
+                </div>
+              )}
+>>>>>>> Stashed changes
+
+              {materiForm.jenis === "PDF" && (
+                <div>
+                  <Label className="text-sm">Upload File PDF *</Label>
+                  <Input 
+                    id="file-upload-materi" 
+                    type="file" 
+                    accept=".pdf" 
+                    className="mt-2" 
+                    onChange={handleMateriFileChange}
+                    // Hanya wajib jika BUKAN edit DAN belum ada file
+                    required={!materiForm.id && !materiForm.file} 
+                  />
+                  {materiForm.file && (
+                    <div className="mt-2 p-2 bg-muted/50 rounded-md flex items-center justify-between">
+                      <div>
+                        <p className="text-sm font-medium truncate">{materiForm.file.nama}</p>
+                        <p className="text-xs text-muted-foreground">{materiForm.file.size}</p>
                       </div>
-                      <Button type="button" variant="ghost" size="icon" className="h-6 w-6 text-red-500 flex-shrink-0" onClick={() => removeFile(file.nama)}>
+                      <Button 
+                        size="icon" 
+                        variant="ghost" 
+                        onClick={() => setMateriForm(prev => ({ ...prev, file: null, urlKonten: "" }))}
+                      >
                         <X className="w-4 h-4" />
                       </Button>
                     </div>
-                  ))}
+                  )}
                 </div>
-                
-                {/* Tombol Upload (Simulasi) */}
-                <div>
-                  <Label 
-                    htmlFor="file-upload-praktikum" 
-                    className="w-full inline-flex items-center justify-center gap-2 px-4 py-2 text-sm border-dashed border-2 rounded-md cursor-pointer hover:bg-muted/50 transition-colors"
-                  >
-                    <UploadCloud className="w-4 h-4" />
-                    Tambah File Pendukung
-                  </Label>
-                  <Input 
-                    id="file-upload-praktikum" 
-                    type="file" 
-                    multiple 
-                    className="sr-only" // Sembunyikan input asli
-                    onChange={handleFileChange}
-                  />
-                  <p className="text-xs text-muted-foreground mt-2">
-                    Anda dapat mengunggah beberapa file (misal: .csv, .pdf, .pptx). File-file ini akan disimpan di server LMS.
-                  </p>
-                </div>
-              </div>
-            )}
-          </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setIsSoalDialogOpen(false)}>Batal</Button>
-            <Button onClick={handleSaveSoal}>Simpan Soal</Button>
-          </DialogFooter>
+              )}
+            </div>
+            <DialogFooter>
+              <Button type="button" variant="outline" onClick={() => setIsMateriDialogOpen(false)}>Batal</Button>
+              <Button type="submit" form="materi-form">Simpan Materi</Button>
+            </DialogFooter>
+          </form>
         </DialogContent>
       </Dialog>
+
+      {/* --- PERUBAHAN: Modal Soal dibungkus <form> --- */}
+      <Dialog open={isSoalDialogOpen} onOpenChange={setIsSoalDialogOpen}>
+        <DialogContent className="max-w-2xl">
+          <form id="soal-form" onSubmit={handleSaveSoal}>
+            <DialogHeader>
+              <DialogTitle>{soalForm.id ? "Edit Soal" : "Tambah Soal Baru"}</DialogTitle>
+              <DialogDescription>{soalForm.tipeSoal === "UJIAN_TEORI" ? `Soal ini akan muncul di unit: ${selectedUnit?.judul}` : `Soal ini untuk Bank Soal ${soalForm.tipeSoal}`}</DialogDescription>
+            </DialogHeader>
+            <div className="grid gap-4 py-4 max-h-[70vh] overflow-y-auto pr-4">
+              <Label>Tipe Soal</Label>
+              <Input value={soalForm.tipeSoal} disabled className="bg-gray-100" />
+              
+              <Label htmlFor="soal-teks">Teks Pertanyaan / Instruksi *</Label>
+              <Textarea id="soal-teks" placeholder="Tulis teks pertanyaan atau instruksi studi kasus di sini..." value={soalForm.teks} onChange={(e) => setSoalForm({ ...soalForm, teks: e.target.value })} rows={4} required />
+              
+              <Label>Tipe Jawaban</Label>
+              <Select value={soalForm.tipeJawaban} onValueChange={(value) => setSoalForm({ ...soalForm, tipeJawaban: value })}>
+                <SelectTrigger><SelectValue placeholder="Pilih Tipe Jawaban..." /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="PILIHAN_GANDA">Pilihan Ganda (Nilai Otomatis)</SelectItem>
+                  <SelectItem value="ESAI">Esai (Nilai Manual)</SelectItem>
+                  <SelectItem value="UPLOAD_FILE">Upload File (Hanya Praktikum)</SelectItem>
+                </SelectContent>
+              </Select>
+              
+              {soalForm.tipeJawaban === "PILIHAN_GANDA" && (
+                <div className="space-y-2 border p-4 rounded-md">
+                  <Label>Opsi Pilihan Ganda *</Label>
+                  {soalForm.pilihan.map((opsi, index) => (
+                    <Input key={index} placeholder={`Opsi ${String.fromCharCode(65 + index)}`} value={opsi} onChange={(e) => { const newPilihan = [...soalForm.pilihan]; newPilihan[index] = e.target.value; setSoalForm({ ...soalForm, pilihan: newPilihan }); }} required />
+                  ))}
+                  <Label className="pt-2">Kunci Jawaban *</Label>
+                  <Input placeholder="Kunci Jawaban (contoh: A)" value={soalForm.kunciJawaban} onChange={(e) => setSoalForm({ ...soalForm, kunciJawaban: e.target.value })} required />
+                </div>
+              )}
+              
+              {soalForm.tipeJawaban === "ESAI" && (
+                <div>
+                  <Label>Kata Kunci (Opsional)</Label>
+                  <Input placeholder="Kata kunci jawaban (untuk panduan asesor)" value={soalForm.kunciJawaban} onChange={(e) => setSoalForm({ ...soalForm, kunciJawaban: e.target.value })} />
+                </div>
+              )}
+              
+              {soalForm.tipeJawaban === "UPLOAD_FILE" && (
+                <div className="space-y-4 border p-4 rounded-md">
+                  <Label>File Pendukung (Dataset, Panduan, Template, dll)</Label>
+                  
+                  <div className="space-y-2">
+                    {soalForm.filePendukung.length === 0 && (
+                      <p className="text-xs text-muted-foreground text-center py-2">Belum ada file pendukung.</p>
+                    )}
+                    {soalForm.filePendukung.map((file) => (
+                      <div key={file.id || file.nama} className="flex items-center justify-between p-2 bg-muted/50 rounded-md">
+                        <div className="flex items-center gap-2 overflow-hidden">
+                          <File className="w-4 h-4 text-primary flex-shrink-0" />
+                          <div className="overflow-hidden">
+                            <p className="text-sm font-medium truncate">{file.nama}</p>
+                            <p className="text-xs text-muted-foreground">{file.size}</p>
+                          </div>
+                        </div>
+                        <Button type="button" variant="ghost" size="icon" className="h-6 w-6 text-red-500 flex-shrink-0" onClick={() => removeFile(file.nama)}>
+                          <X className="w-4 h-4" />
+                        </Button>
+                      </div>
+                    ))}
+                  </div>
+                  
+                  <div>
+                    <Label 
+                      htmlFor="file-upload-praktikum" 
+                      className="w-full inline-flex items-center justify-center gap-2 px-4 py-2 text-sm border-dashed border-2 rounded-md cursor-pointer hover:bg-muted/50 transition-colors"
+                    >
+                      <UploadCloud className="w-4 h-4" />
+                      Tambah File Pendukung
+                    </Label>
+                    <Input 
+                      id="file-upload-praktikum" 
+                      type="file" 
+                      multiple 
+                      className="sr-only" 
+                      onChange={handleFileChange}
+                    />
+                    <p className="text-xs text-muted-foreground mt-2">
+                      Anda dapat mengunggah beberapa file (misal: .csv, .pdf, .pptx). File-file ini akan disimpan di server LMS.
+                    </p>
+                  </div>
+                </div>
+              )}
+            </div>
+            <DialogFooter>
+              <Button type="button" variant="outline" onClick={() => setIsSoalDialogOpen(false)}>Batal</Button>
+              <Button type="submit" form="soal-form">Simpan Soal</Button>
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
+      
+      {/* --- Dialog Konfirmasi Hapus Unit --- */}
+      <AlertDialog open={!!deleteUnitTarget} onOpenChange={() => setDeleteUnitTarget(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Hapus Unit Kompetensi?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Apakah Anda yakin ingin menghapus unit "{deleteUnitTarget?.judul}"? Tindakan ini akan menghapus semua materi dan soal di dalamnya. Aksi ini tidak dapat dibatalkan.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Batal</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={confirmDeleteUnit}
+              className="bg-red-600 hover:bg-red-700"
+            >
+              Hapus
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* --- Dialog Konfirmasi Hapus Materi --- */}
+      <AlertDialog open={!!deleteMateriTarget} onOpenChange={() => setDeleteMateriTarget(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Hapus Materi?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Apakah Anda yakin ingin menghapus materi "{deleteMateriTarget?.judul}"? Aksi ini tidak dapat dibatalkan.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Batal</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={confirmDeleteMateri}
+              className="bg-red-600 hover:bg-red-700"
+            >
+              Hapus
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* --- Dialog Konfirmasi Hapus Soal --- */}
+      <AlertDialog open={!!deleteSoalTarget} onOpenChange={() => setDeleteSoalTarget(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Hapus Soal?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Apakah Anda yakin ingin menghapus soal "{deleteSoalTarget?.teks.substring(0, 50)}..."? Aksi ini tidak dapat dibatalkan.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Batal</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={confirmDeleteSoal}
+              className="bg-red-600 hover:bg-red-700"
+            >
+              Hapus
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
     </React.Fragment>
   );
 };
@@ -486,12 +899,23 @@ const SkemaContentManager = ({ skemaId }) => {
 export default function SchemaPage() {
   const [skemaList, setSkemaList] = useState([]); 
   const [activeSkemaTab, setActiveSkemaTab] = useState(""); 
+  const [activeContentTab, setActiveContentTab] = useState("unit");
   const [loadingSkema, setLoadingSkema] = useState(true);
   const [isSavingSkema, setIsSavingSkema] = useState(false); 
 
   const [isSkemaDialogOpen, setIsSkemaDialogOpen] = useState(false);
   const [skemaForm, setSkemaForm] = useState({ id: "", judul: "", deskripsi: "" });
 
+<<<<<<< Updated upstream
+=======
+  // --- PERUBAHAN: State untuk dialog notifikasi & error ---
+  const [infoDialog, setInfoDialog] = useState({ open: false, title: "", message: "" });
+  // --- BATAS PERUBAHAN ---
+
+  const [isDeleteAlertOpen, setIsDeleteAlertOpen] = useState(false);
+  const [isDeletingSkema, setIsDeletingSkema] = useState(false);
+
+>>>>>>> Stashed changes
   useEffect(() => {
     loadSkemaList();
   }, []);
@@ -511,11 +935,11 @@ export default function SchemaPage() {
     }
   };
 
-  const handleSaveSkema = async () => {
-    if (!skemaForm.id || !skemaForm.judul) {
-      alert("ID Skema dan Nama Lengkap Skema wajib diisi.");
-      return;
-    }
+  // --- PERUBAHAN: onSubmit handler ditambahkan (e) ---
+  const handleSaveSkema = async (e) => {
+    e.preventDefault(); // Mencegah reload halaman
+    
+    // Validasi JS untuk 'required' sudah dihapus, ditangani HTML5
     
     try {
       setIsSavingSkema(true);
@@ -528,15 +952,45 @@ export default function SchemaPage() {
       setSkemaForm({ id: "", judul: "", deskripsi: "" }); 
     } catch (error) {
       console.error("[v0] Error creating skema:", error);
-      alert(`Gagal menyimpan skema: ${error.message}`);
+      setInfoDialog({ open: true, title: "Gagal Menyimpan", message: `Gagal menyimpan skema: ${error.message}` });
     } finally {
       setIsSavingSkema(false);
     }
   };
 
+<<<<<<< Updated upstream
+=======
+  const handleDeleteSkema = async () => {
+    if (!activeSkemaTab) return;
+    
+    try {
+      setIsDeletingSkema(true);
+      await mockDeleteSkema(activeSkemaTab);
+      
+      // Refresh skema list
+      await loadSkemaList();
+      // --- PERUBAHAN: Reset tab aktif ---
+      const data = await mockGetAllSkema(); // Panggil lagi
+      setSkemaList(data);
+      if (data.length > 0) {
+        setActiveSkemaTab(data[0].id); // Atur ke skema pertama yang tersisa
+      } else {
+        setActiveSkemaTab(""); // Kosongkan jika tidak ada skema tersisa
+      }
+      // --- BATAS PERUBAHAN ---
+      setIsDeleteAlertOpen(false);
+    } catch (error) {
+      console.error("[v0] Error deleting skema:", error);
+      setInfoDialog({ open: true, title: "Gagal Menghapus", message: `Gagal menghapus skema: ${error.message}` });
+    } finally {
+      setIsDeletingSkema(false);
+    }
+  };
+
+>>>>>>> Stashed changes
   return (
     <MainLayout>
-      <div className="flex-1 p-6 space-y-6 max-w-7xl mx-auto">
+      <div className="flex-1 p-6 space-y-6">
         <div>
           <h1 className="text-3xl font-bold text-gray-900">Manajemen Skema & Konten</h1>
           <p className="text-gray-600 mt-1">Kelola skema, unit kompetensi, materi pembelajaran, dan soal ujian</p>
@@ -549,6 +1003,7 @@ export default function SchemaPage() {
           </div>
         ) : (
           <Tabs value={activeSkemaTab} onValueChange={setActiveSkemaTab} className="w-full">
+<<<<<<< Updated upstream
             <div className="flex items-center justify-between mb-2 flex-wrap gap-2">
               <TabsList>
                 {skemaList.map((skema) => (
@@ -562,74 +1017,180 @@ export default function SchemaPage() {
                 Tambah Skema Baru
               </Button>
             </div>
+=======
+            
+            <Card>
+              <CardContent className="pt-6 flex flex-col gap-4">
+                <div className="flex items-center justify-between flex-wrap gap-2">
+                  <TabsList>
+                    {skemaList.map((skema) => (
+                      <TabsTrigger key={skema.id} value={skema.id}>
+                        {skema.judul} ({skema.id})
+                      </TabsTrigger>
+                    ))}
+                  </TabsList>
+                  <div className="flex items-center gap-2">
+                    <Button
+                      variant="destructive"
+                      onClick={() => setIsDeleteAlertOpen(true)}
+                      disabled={!activeSkemaTab || isDeletingSkema}
+                      title={!activeSkemaTab ? "Pilih skema terlebih dahulu" : "Hapus skema aktif"}
+                    >
+                      {isDeletingSkema ? <Spinner className="w-4 h-4 mr-2" /> : <Trash2 className="w-4 h-4 mr-2" />}
+                      Hapus Skema
+                    </Button>
+
+                    <Button onClick={() => {
+                      setSkemaForm({ id: "", judul: "", deskripsi: "" }); // Reset form
+                      setIsSkemaDialogOpen(true);
+                    }}>
+                      <Plus className="w-4 h-4 mr-2" />
+                      Tambah Skema Baru
+                    </Button>
+                  </div>
+                </div>
+                
+                <Tabs value={activeContentTab} onValueChange={setActiveContentTab} className="mt-2">
+                  <TabsList className="grid w-full grid-cols-3">
+                    <TabsTrigger value="unit">Unit Kompetensi & Soal Teori</TabsTrigger>
+                    <TabsTrigger value="tryout">Bank Soal Tryout</TabsTrigger>
+                    <TabsTrigger value="praktikum">Bank Soal Praktikum</TabsTrigger>
+                  </TabsList>
+                </Tabs>
+
+              </CardContent>
+            </Card>
+
+>>>>>>> Stashed changes
 
             {skemaList.map((skema) => (
               <TabsContent 
                 key={skema.id} 
                 value={skema.id} 
-                className="mt-4"
+                className="mt-0" 
                 forceMount={activeSkemaTab === skema.id}
               >
+<<<<<<< Updated upstream
                 <SkemaContentManager skemaId={skema.id} />
               </TabsContent>
             ))}
+=======
+                <SkemaContentManager 
+                  skemaId={skema.id} 
+                  activeContentTab={activeContentTab} 
+                  setInfoDialog={setInfoDialog} 
+                />
+              </TabsContent>
+            ))}
+
+            <AlertDialog open={isDeleteAlertOpen} onOpenChange={setIsDeleteAlertOpen}>
+              <AlertDialogContent>
+                <AlertDialogHeader>
+                  <AlertDialogTitle>Hapus Skema?</AlertDialogTitle>
+                  <AlertDialogDescription>
+                    Apakah Anda yakin ingin menghapus skema {activeSkemaTab} beserta seluruh kontennya?
+                    Aksi ini tidak dapat dibatalkan.
+                  </AlertDialogDescription>
+                </AlertDialogHeader>
+                <AlertDialogFooter>
+                  <AlertDialogCancel disabled={isDeletingSkema}>Batal</AlertDialogCancel>
+                  <AlertDialogAction 
+                    onClick={handleDeleteSkema}
+                    disabled={isDeletingSkema}
+                    className="bg-red-600 hover:bg-red-700"
+                  >
+                    {isDeletingSkema ? (
+                      <Spinner className="w-4 h-4 mr-2" />
+                    ) : (
+                      <Trash2 className="w-4 h-4 mr-2" />
+                    )}
+                    Hapus Permanen
+                  </AlertDialogAction>
+                </AlertDialogFooter>
+              </AlertDialogContent>
+            </AlertDialog>
+>>>>>>> Stashed changes
           </Tabs>
         )}
 
       </div>
 
+      {/* --- PERUBAHAN: Modal Skema dibungkus <form> --- */}
       <Dialog open={isSkemaDialogOpen} onOpenChange={setIsSkemaDialogOpen}>
         <DialogContent className="sm:max-w-md">
-          <DialogHeader>
-            <DialogTitle>Tambah Skema Sertifikasi Baru</DialogTitle>
-            <DialogDescription>
-              Buat skema baru. Anda dapat menambahkan unit kompetensi setelah skema dibuat.
-            </DialogDescription>
-          </DialogHeader>
-          <div className="space-y-4 py-4">
-            <div>
-              <Label htmlFor="skema-id" className="text-sm font-medium text-gray-900">ID Skema (Singkatan) *</Label>
-              <Input 
-                id="skema-id" 
-                placeholder="Contoh: AI_OPS" 
-                value={skemaForm.id}
-                onChange={(e) => setSkemaForm({ ...skemaForm, id: e.target.value.toUpperCase().replace(/\s+/g, '_') })} 
-                className="mt-1 border-gray-300" 
-              />
-              <p className="text-xs text-gray-500 mt-1">Harus unik, huruf kapital, tanpa spasi (spasi akan diganti '_').</p>
+          <form id="skema-form" onSubmit={handleSaveSkema}>
+            <DialogHeader>
+              <DialogTitle>Tambah Skema Sertifikasi Baru</DialogTitle>
+              <DialogDescription>
+                Buat skema baru. Anda dapat menambahkan unit kompetensi setelah skema dibuat.
+              </DialogDescription>
+            </DialogHeader>
+            <div className="space-y-4 py-4">
+              <div>
+                <Label htmlFor="skema-id" className="text-sm font-medium text-gray-900">ID Skema (Singkatan) *</Label>
+                <Input 
+                  id="skema-id" 
+                  placeholder="Contoh: KSK" 
+                  value={skemaForm.id}
+                  onChange={(e) => setSkemaForm({ ...skemaForm, id: e.target.value.toUpperCase().replace(/\s+/g, '_') })} 
+                  className="mt-1 border-gray-300" 
+                  required 
+                />
+                <p className="text-xs text-gray-500 mt-1">Harus unik, huruf kapital, tanpa spasi (spasi akan diganti '_').</p>
+              </div>
+              <div>
+                <Label htmlFor="skema-judul" className="text-sm font-medium text-gray-900">Nama Lengkap Skema *</Label>
+                <Input 
+                  id="skema-judul" 
+                  placeholder="Contoh: Komputasi Statistik" 
+                  value={skemaForm.judul}
+                  onChange={(e) => setSkemaForm({ ...skemaForm, judul: e.target.value })} 
+                  className="mt-1 border-gray-300" 
+                  required 
+                />
+              </div>
+               <div>
+                <Label htmlFor="skema-deskripsi" className="text-sm font-medium text-gray-900">Deskripsi (Opsional)</Label>
+                <Textarea 
+                  id="skema-deskripsi" 
+                  placeholder="Jelaskan skema ini secara singkat..." 
+                  value={skemaForm.deskripsi}
+                  onChange={(e) => setSkemaForm({ ...skemaForm, deskripsi: e.target.value })} 
+                  rows={3} 
+                  className="mt-1 border-gray-300" 
+                />
+              </div>
             </div>
-            <div>
-              <Label htmlFor="skema-judul" className="text-sm font-medium text-gray-900">Nama Lengkap Skema *</Label>
-              <Input 
-                id="skema-judul" 
-                placeholder="Contoh: AI Operations Engineer" 
-                value={skemaForm.judul}
-                onChange={(e) => setSkemaForm({ ...skemaForm, judul: e.target.value })} 
-                className="mt-1 border-gray-300" 
-              />
-            </div>
-             <div>
-              <Label htmlFor="skema-deskripsi" className="text-sm font-medium text-gray-900">Deskripsi (Opsional)</Label>
-              <Textarea 
-                id="skema-deskripsi" 
-                placeholder="Jelaskan skema ini secara singkat..." 
-                value={skemaForm.deskripsi}
-                onChange={(e) => setSkemaForm({ ...skemaForm, deskripsi: e.target.value })} 
-                rows={3} 
-                className="mt-1 border-gray-300" 
-              />
-            </div>
-          </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setIsSkemaDialogOpen(false)} disabled={isSavingSkema}>
-              Batal
-            </Button>
-            <Button onClick={handleSaveSkema} disabled={!skemaForm.id || !skemaForm.judul || isSavingSkema}>
-              {isSavingSkema ? <Spinner className="w-4 h-4 mr-2" /> : "Simpan Skema"}
-            </Button>
-          </DialogFooter>
+            <DialogFooter>
+              <Button type="button" variant="outline" onClick={() => setIsSkemaDialogOpen(false)} disabled={isSavingSkema}>
+                Batal
+              </Button>
+              <Button type="submit" form="skema-form" disabled={isSavingSkema}>
+                {isSavingSkema ? <Spinner className="w-4 h-4 mr-2" /> : "Simpan Skema"}
+              </Button>
+            </DialogFooter>
+          </form>
         </DialogContent>
       </Dialog>
+      
+      {/* --- PERUBAHAN: Dialog Notifikasi Sederhana --- */}
+      <AlertDialog open={infoDialog.open} onOpenChange={() => setInfoDialog({ open: false, title: "", message: "" })}>
+        <AlertDialogContent className="sm:max-w-md">
+          <AlertDialogHeader>
+            {/* Header dibuat sederhana tanpa ikon */}
+            <AlertDialogTitle>{infoDialog.title || "Informasi"}</AlertDialogTitle>
+            <AlertDialogDescription>
+              {infoDialog.message}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogAction onClick={() => setInfoDialog({ open: false, title: "", message: "" })}>
+              Lanjutkan
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+      {/* --- BATAS PERUBAHAN --- */}
 
     </MainLayout>
   );
