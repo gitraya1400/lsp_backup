@@ -382,7 +382,7 @@ const StatistikAdmin = {
 
 /**
  * [ASESI] Mendapatkan Status Ujian (Hub Ujian)
- * Endpoint: GET /api/asesi/exams/status
+ * Endpoint: GET /api/asesi/exam-status
  * Deskripsi: Endpoint KRUSIAL. Mengambil status semua 3 tipe ujian (Teori, Praktikum, Unjuk Diri)
  * beserta jadwal jika sudah di-plot oleh Admin.
  * Response: ApiResponse<ExamStatus>
@@ -683,5 +683,3 @@ const StatistikAdmin = {
  * Mock: mockGetRekapHasilAkhir
  */
 
-// Placeholder component agar file ini valid .jsx
-const ApiContract = () => null;

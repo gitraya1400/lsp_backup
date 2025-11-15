@@ -31,8 +31,7 @@ const StatTypeCard = ({ title, icon, stats, colorClass, loading }) => {
     <Card className={cn("hover:shadow-lg transition-shadow border-t-4", colorClass)}>
       <CardHeader>
         <CardTitle className="flex items-center gap-3 text-lg">
-          {/* Gunakan warna ikon yang sesuai */}
-          <Icon className={cn("w-6 h-6", colorClass.replace("border-", "text-"))} />
+          
           {title}
         </CardTitle>
       </CardHeader>
@@ -135,7 +134,7 @@ export default function AsesorDashboard() {
             title="Ujian Teori"
             icon={BookText}
             stats={stats?.teori}
-            colorClass="border-blue-500" // Warna biru dari gambar
+            colorClass="border-yellow-500" // Warna biru dari gambar
             loading={loading}
           />
           <StatTypeCard 

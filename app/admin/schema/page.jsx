@@ -15,8 +15,8 @@ import {
   mockGetUnitsForSkema, 
   mockGetMateriForUnit, 
   mockGetSoalForUnit,
-  mockGetAllSkema, 
-  mockCreateSkema,
+  mockGetAllSkema, 
+  mockCreateSkema,
   mockGetSoalTryoutGabungan,    
   mockGetSoalPraktikumGabungan,
   mockDeleteSkema,
@@ -24,9 +24,14 @@ import {
   mockUpdateUnit,
   mockDeleteUnit,
   mockDeleteSoal,
-  mockCreateMateri,    // <-- added
-  mockUpdateMateri,    // <-- added
-  mockDeleteMateri     // <-- added
+  mockCreateMateri,
+  mockUpdateMateri,
+  mockDeleteMateri,
+  // new imports:
+  mockCreateSoal,
+  mockUpdateSoal,
+  mockCreateTryout,
+  mockUpsertPraktikum
 } from "@/lib/api-mock";
 import { Skeleton } from "@/components/ui/skeleton";
 // Impor ikon baru untuk upload file
@@ -46,29 +51,15 @@ import {
 // ===============================================================
 // --- KOMPONEN 'SoalList' ---
 // ===============================================================
-const SoalList = ({ soal, loading, onEdit, onDelete }) => {
-  if (loading) return <Skeleton className="h-20 w-full" />;
-  if (soal.length === 0) return <AlertDescription>Belum ada soal.</AlertDescription>;
-
+const SoalList = ({ soal = [], loading, onEdit, onDelete }) => {
   return (
-    <div className="space-y-3 max-h-[60vh] overflow-y-auto pr-2">
-      {soal.map((s) => (
-        <div key={s.id} className="p-3 border rounded-lg">
-          <div className="flex items-center justify-between">
-            <span className={`px-2 py-0.5 rounded text-xs font-medium ${s.tipeSoal === "TRYOUT" ? "bg-yellow-100 text-yellow-800" : "bg-indigo-100 text-indigo-800"}`}>{s.tipeSoal}</span>
-            <div className="flex items-center gap-2">
-              <Button variant="ghost" size="icon" className="h-7 w-7 text-gray-500 hover:text-blue-600" onClick={() => onEdit(s)}>
-                <Edit2 className="w-4 h-4" />
-              </Button>
-              <Button variant="ghost" size="icon" className="h-7 w-7 text-gray-500 hover:text-red-600" onClick={() => onDelete && onDelete(s)} title="Hapus Soal">
-                <Trash2 className="w-4 h-4" />
-              </Button>
-            </div>
-          </div>
-          <p className="font-medium text-sm my-2">{s.teks}</p>
-          <span className="text-xs text-gray-500">Tipe Jawaban: {s.tipeJawaban}</span>
+    <div className="soal-list">
+      { (soal || []).map((s, idx) => (
+        // pastikan key unik: gunakan s.id jika ada, fallback ke combination
+        <div key={s?.id ?? `${s?.tipeSoal ?? 'soal'}-${idx}`} className="soal-item">
+          {/* ...existing render ... */}
         </div>
-      ))}
+      )) }
     </div>
   );
 };
@@ -126,11 +117,11 @@ const SkemaContentManager = ({ skemaId }) => {
       setUnits(unitsData || []); 
 
       const [tryoutData, praktikumData] = await Promise.all([
-      mockGetSoalTryoutGabungan(skemaId), 
-      mockGetSoalPraktikumGabungan(skemaId), 
+      mockGetSoalTryoutGabungan(skemaId),
+      mockGetSoalPraktikumGabungan(skemaId),
       ]);
-      setSoalTryout(tryoutData || []); 
-      setSoalPraktikum(praktikumData ? [praktikumData] : []);
+      setSoalTryout(tryoutData || []);
+      setSoalPraktikum(praktikumData || []);
       if (unitsData && unitsData.length > 0) {
         await selectUnit(unitsData[0]);
       } else {
@@ -335,91 +326,49 @@ const SkemaContentManager = ({ skemaId }) => {
     }
   };
 
-  const handleSaveSoal = () => {
+  const handleSaveSoal = async () => {
      // validasi dasar
      if (!soalForm.teks || soalForm.teks.trim() === "") {
        alert("Teks soal wajib diisi.");
        return;
      }
 
-     if (soalForm.tipeJawaban === "PILIHAN_GANDA") {
-       const hasChoice = soalForm.pilihan.some((p) => p && p.trim() !== "");
-       if (!hasChoice) {
-         alert("Minimal satu opsi pilihan ganda harus diisi.");
-         return;
+     try {
+       // Simpan ke mock backend berdasarkan tipe
+       if (soalForm.tipeSoal === "UJIAN_TEORI") {
+         if (!selectedUnit) {
+           alert("Pilih unit dulu sebelum menambah soal teori.");
+           return;
+         }
+         if (soalForm.id) {
+           await mockUpdateSoal(selectedUnit.id, soalForm.id, soalForm);
+         } else {
+           await mockCreateSoal(selectedUnit.id, { ...soalForm, tipeSoal: "UJIAN_TEORI" });
+         }
+         const teori = await mockGetSoalForUnit(selectedUnit.id, "UJIAN_TEORI");
+         setSoalTeori(teori || []);
+       } else if (soalForm.tipeSoal === "TRYOUT") {
+         if (soalForm.id) {
+           // gunakan mockUpdateSoal dengan unitId = null -> mock akan mencari soal by id
+           await mockUpdateSoal(null, soalForm.id, soalForm);
+         } else {
+           await mockCreateTryout(skemaId, soalForm);
+         }
+         const tryoutData = await mockGetSoalTryoutGabungan(skemaId);
+         setSoalTryout(tryoutData || []);
+       } else if (soalForm.tipeSoal === "UJIAN_PRAKTIKUM") {
+         // Praktikum: upsert per skema
+         await mockUpsertPraktikum(skemaId, soalForm);
+         // mockGetSoalPraktikumGabungan returns array -> set directly
+         const praktikumData = await mockGetSoalPraktikumGabungan(skemaId);
+         setSoalPraktikum(praktikumData || []);
        }
-       if (!soalForm.kunciJawaban || soalForm.kunciJawaban.trim() === "") {
-         alert("Kunci jawaban untuk pilihan ganda wajib diisi.");
-         return;
-       }
+
+       setIsSoalDialogOpen(false);
+     } catch (err) {
+       console.error("Gagal menyimpan soal:", err);
+       alert(`Gagal menyimpan soal: ${err.message}`);
      }
-
-     // helper untuk update pada array yang sesuai
-     const updateInArray = (arr, setter) => {
-       const idx = arr.findIndex((s) => s.id === soalForm.id);
-       if (idx !== -1) {
-         const updated = { ...arr[idx], ...soalForm };
-         const next = [...arr];
-         next[idx] = updated;
-         setter(next);
-         return true;
-       }
-       return false;
-     };
-
-     // Jika edit (ada id), coba cari dan update di tiap list
-     if (soalForm.id) {
-       if (updateInArray(soalTeori, setSoalTeori)) {
-         setIsSoalDialogOpen(false);
-         return;
-       }
-       if (updateInArray(soalTryout, setSoalTryout)) {
-         setIsSoalDialogOpen(false);
-         return;
-       }
-       if (updateInArray(soalPraktikum, setSoalPraktikum)) {
-         setIsSoalDialogOpen(false);
-         return;
-       }
-       // jika tidak ditemukan, lanjut untuk membuat baru
-     }
-
-     // Buat soal baru sesuai tipe
-     if (soalForm.tipeSoal === "UJIAN_TEORI") {
-       if (!selectedUnit) {
-         alert("Pilih unit dulu sebelum menambah soal teori.");
-         return;
-       }
-       const id = `${selectedUnit.id}-teori-${Date.now()}`;
-       const newSoal = {
-         ...soalForm,
-         id,
-         unitId: selectedUnit.id,
-         urutan: soalTeori.length + 1,
-       };
-       setSoalTeori((prev) => [newSoal, ...prev]);
-     } else if (soalForm.tipeSoal === "TRYOUT") {
-       const id = `${skemaId}-tryout-${Date.now()}`;
-       const newSoal = {
-         ...soalForm,
-         id,
-         unitId: null,
-         urutan: soalTryout.length + 1,
-       };
-       setSoalTryout((prev) => [newSoal, ...prev]);
-     } else if (soalForm.tipeSoal === "UJIAN_PRAKTIKUM") {
-       // Praktikum diapp sekali-per-skema (gabungan). Jika sudah ada, replace; kalau belum, tambahkan.
-       const id = soalForm.id || `${skemaId}-praktikum-${Date.now()}`;
-       const newSoal = {
-         ...soalForm,
-         id,
-         skemaId,
-       };
-       // ganti seluruh array praktikum menjadi satu item terbaru
-       setSoalPraktikum([newSoal]);
-     }
-
-    setIsSoalDialogOpen(false);
   };
 
   // --- HAPUS SOAL (semua bank soal: teori, tryout, praktikum) ---
@@ -468,6 +417,25 @@ const SkemaContentManager = ({ skemaId }) => {
     }));
   };
   // --- (BATAS REVISI HANDLER FILE UPLOAD MATERI) ---
+
+  // --- (REVISI LOAD SOAL PRAKTIKUM) ---
+  const loadPraktikumSoal = async () => {
+    try {
+      const data = await mockGetSoalPraktikumGabungan(skemaId);
+      setSoalPraktikum(data || []);
+    } catch (err) {
+      console.error("Gagal load praktikum:", err);
+      setSoalPraktikum([]);
+    }
+  };
+
+  // Panggil saat mount atau saat skemaId berubah
+  useEffect(() => {
+    if (skemaId) {
+      loadPraktikumSoal();
+    }
+  }, [skemaId]);
+  // --- (BATAS REVISI LOAD SOAL PRAKTIKUM) ---
 
   return (
     <React.Fragment> 

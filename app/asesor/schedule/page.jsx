@@ -47,7 +47,7 @@ const EventTag = ({ event }) => {
   const titleWord = event.judul.split(" ")[0]
 
   return (
-    <div className={cn("event-tag", colors)}>
+    <div className={cn("event-tag max-w-full", colors)}>
       <Icon className="w-3 h-3" />
       <span className="truncate">{titleWord.length > 10 ? label : titleWord}</span>
     </div>
@@ -70,11 +70,11 @@ const CustomDayButton = ({ linimasa = [], ...props }) => {
       {props.children}
       {eventsForDay.length > 0 && (
         <div className="event-tag-container">
-          {eventsForDay.slice(0, 2).map((event) => (
+          {eventsForDay.slice(0, 1).map((event) => (
             <EventTag key={event.id} event={event} />
           ))}
-          {eventsForDay.length > 2 && (
-            <div className="event-tag-more">+{eventsForDay.length - 2} lagi</div>
+          {eventsForDay.length > 1 && (
+            <div className="event-tag-more">+{eventsForDay.length - 1} lagi</div>
           )}
         </div>
       )}
@@ -176,14 +176,14 @@ export default function AsesorSchedulePage() {
             title="Minggu Ini"
             value={stats.mingguIni}
             icon={Clock}
-            colorClass="text-cyan-600"
+            colorClass="text-blue-600"
             loading={loading}
           />
           <StatCard
             title="Bulan Ini"
             value={stats.bulanIni}
             icon={Users}
-            colorClass="text-sky-600"
+            colorClass="text-blue-600"
             loading={loading}
           />
         </div>

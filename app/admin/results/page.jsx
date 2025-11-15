@@ -23,10 +23,9 @@ import {
   mockGetAllSkema 
 } from "@/lib/api-mock"
 import { Skeleton } from "@/components/ui/skeleton"
-// --- (PERUBAHAN: Tambahkan ikon 'Info') ---
-import { Search, CheckCircle2, AlertCircle, ChevronLeft, ChevronRight, User, FileText, Mic, Brain, Hash, Info } from "lucide-react" 
+import { Search, CheckCircle2, AlertCircle, ChevronLeft, ChevronRight, User, Info } from "lucide-react" 
 
-const ITEMS_PER_PAGE = 20 // Atur jumlah asesi per halaman
+const ITEMS_PER_PAGE = 20 
 
 // Helper component (tidak berubah)
 const StatusBadge = ({ status }) => {
@@ -43,21 +42,7 @@ const StatusBadge = ({ status }) => {
   )
 }
 
-// Helper untuk baris info di Modal
-const ModalInfoRow = ({ icon, label, children }) => {
-  const Icon = icon
-  return (
-    <div className="flex items-start gap-3">
-      <Icon className="w-5 h-5 text-muted-foreground mt-1 flex-shrink-0" />
-      <div>
-        <p className="text-sm text-muted-foreground">{label}</p>
-        <div className="font-medium text-gray-900">{children}</div>
-      </div>
-    </div>
-  )
-}
-
-// Komponen Modal Detail Asesi (Tidak berubah dari sebelumnya)
+// Komponen Modal Detail Asesi (Tidak berubah)
 const AsesiDetailModal = ({ item, onClose }) => {
   if (!item) return null
 
@@ -73,20 +58,29 @@ const AsesiDetailModal = ({ item, onClose }) => {
               <span className="font-semibold text-foreground">{asesiData.nama} ({asesiData.nim})</span>
             </DialogDescription>
           </DialogHeader>
-          <div className="space-y-5 mt-4">
-            <ModalInfoRow icon={User} label="Kelas & Skema">
-              {asesiData.kelas} / {hasilAkhir.skemaId}
-            </ModalInfoRow>
+          
+          <div className="space-y-4 mt-4 max-h-[50vh] overflow-y-auto pr-4">
             
-            <ModalInfoRow icon={Hash} label="Status Akhir">
+            {/* Kelas & Skema */}
+            <div>
+              <p className="text-sm text-muted-foreground">Kelas & Skema</p>
+              <p className="font-medium text-gray-900">{asesiData.kelas} / {hasilAkhir.skemaId}</p>
+            </div>
+
+            {/* Status Akhir */}
+            <div className="flex items-center justify-between">
+              <p className="text-sm text-muted-foreground">Status Akhir</p>
               <StatusBadge status={hasilAkhir.statusAkhir} />
-            </ModalInfoRow>
+            </div>
             
             <hr />
 
-            <ModalInfoRow icon={Brain} label="Ujian Teori">
-              <StatusBadge status={hasilAkhir.hasilTeori.statusAkumulasi} />
-              
+            {/* Ujian Teori */}
+            <div>
+              <div className="flex items-center justify-between">
+                <p className="text-sm text-muted-foreground">Ujian Teori</p>
+                <StatusBadge status={hasilAkhir.hasilTeori.statusAkumulasi} />
+              </div>
               <div className="mt-2 space-y-2 border-t pt-2">
                 <p className="text-xs font-semibold text-gray-600">Rincian Penilai per Unit:</p>
                 <div className="max-h-32 overflow-y-auto space-y-1 pr-2">
@@ -104,21 +98,29 @@ const AsesiDetailModal = ({ item, onClose }) => {
                   )}
                 </div>
               </div>
-            </ModalInfoRow>
+            </div>
 
-            <ModalInfoRow icon={FileText} label="Ujian Praktikum">
-              <StatusBadge status={hasilAkhir.hasilPraktikum} />
-              <p className="text-xs text-muted-foreground mt-1">
+            {/* Ujian Praktikum */}
+            <div>
+              <div className="flex items-center justify-between">
+                <p className="text-sm text-muted-foreground">Ujian Praktikum</p>
+                <StatusBadge status={hasilAkhir.hasilPraktikum} />
+              </div>
+              <p className="text-xs text-muted-foreground mt-1 text-right">
                 Asesor: {hasilAkhir.asesorPraktikum || 'N/A'}
               </p>
-            </ModalInfoRow>
+            </div>
             
-            <ModalInfoRow icon={Mic} label="Unjuk Diri">
-              <StatusBadge status={hasilAkhir.hasilUnjukDiri} />
-              <p className="text-xs text-muted-foreground mt-1">
+            {/* Unjuk Diri */}
+            <div>
+              <div className="flex items-center justify-between">
+                <p className="text-sm text-muted-foreground">Unjuk Diri</p>
+                <StatusBadge status={hasilAkhir.hasilUnjukDiri} />
+              </div>
+              <p className="text-xs text-muted-foreground mt-1 text-right">
                 Asesor: {hasilAkhir.asesorUnjukDiri || 'N/A'}
               </p>
-            </ModalInfoRow>
+            </div>
 
           </div>
           <DialogFooter>
@@ -222,22 +224,25 @@ export default function AdminResultsPage() {
 
   return (
     <MainLayout>
-      <div className="flex-1 p-6 space-y-6 max-w-7xl mx-auto">
+      {/* --- PERUBAHAN 1: 'max-w-7xl mx-auto' dihapus agar layout penuh --- */}
+      <div className="flex-1 p-6 space-y-6">
         {/* Header (Tidak Berubah) */}
         <div>
           <h1 className="text-3xl font-bold text-gray-900">Rekapitulasi Hasil</h1>
           <p className="text-gray-600 mt-1">Lihat hasil akhir penilaian semua asesi.</p>
         </div>
 
-        {/* Filters Card (Tidak Berubah) */}
+        {/* --- PERUBAHAN 2: Layout Filter diubah dari Grid ke Flex --- */}
         <Card>
           <CardContent className="pt-6">
-            <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-              {/* Filter Skema */}
-              <div>
+            {/* Ganti 'grid' menjadi 'flex' dan atur item-end */}
+            <div className="flex flex-col md:flex-row gap-4 md:items-end">
+              
+              {/* Filter Skema (diberi lebar tetap) */}
+              <div className="md:w-64">
                 <Label htmlFor="filter-skema">Filter Skema</Label>
                 <Select value={filterSkema} onValueChange={setFilterSkema}>
-                  <SelectTrigger id="filter-skema" className="mt-1">
+                  <SelectTrigger id="filter-skema" className="mt-1 h-10">
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
@@ -249,10 +254,11 @@ export default function AdminResultsPage() {
                 </Select>
               </div>
               
-              <div>
+              {/* Filter Kelas (diberi lebar tetap) */}
+              <div className="md:w-48">
                 <Label htmlFor="filter-kelas">Filter Kelas</Label>
                 <Select value={filterKelas} onValueChange={setFilterKelas}>
-                  <SelectTrigger id="filter-kelas" className="mt-1">
+                  <SelectTrigger id="filter-kelas" className="mt-1 h-10">
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
@@ -264,11 +270,11 @@ export default function AdminResultsPage() {
                 </Select>
               </div>
               
-              {/* Filter Status */}
-              <div>
+              {/* Filter Status (diberi lebar tetap) */}
+              <div className="md:w-56"> 
                 <Label htmlFor="filter-status">Filter Status Akhir</Label>
                 <Select value={filterStatus} onValueChange={setFilterStatus}>
-                  <SelectTrigger id="filter-status" className="mt-1">
+                  <SelectTrigger id="filter-status" className="mt-1 h-10">
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
@@ -279,8 +285,8 @@ export default function AdminResultsPage() {
                 </Select>
               </div>
 
-              {/* Search Asesi */}
-              <div>
+              {/* Search Asesi (diberi flex-1 agar memenuhi sisa ruang) */}
+              <div className="flex-1 w-full"> 
                 <Label htmlFor="search-asesi">Cari Asesi</Label>
                 <div className="relative mt-1">
                   <Search className="absolute left-3 top-3 w-5 h-5 text-gray-400" />
@@ -294,17 +300,20 @@ export default function AdminResultsPage() {
                 </div>
               </div>
             </div>
+            {/* --- BATAS PERUBAHAN 2 --- */}
           </CardContent>
         </Card>
 
         {/* ========================================================== */}
-        {/* --- (TABEL UTAMA DIPERBAIKI) --- */}
+        {/* --- (TABEL UTAMA) --- */}
         {/* ========================================================== */}
         <Card>
           <CardHeader>
             <CardTitle>Daftar Hasil Asesi</CardTitle>
             <CardDescription>
               Menampilkan {paginatedRekap.length} dari {filteredRekap.length} hasil.
+              <br />
+              Klik ikon info untuk melihat asesor yang menilai asesi.
             </CardDescription>
           </CardHeader>
           <CardContent className="p-0">
@@ -347,28 +356,15 @@ export default function AdminResultsPage() {
                           <TableCell>{item.asesiData.kelas}</TableCell>
                           <TableCell>{item.hasilAkhir.skemaId}</TableCell>
                           
-                          <TableCell>
+                          <TableCell className="text-center">
                             <StatusBadge status={item.hasilAkhir.hasilTeori.statusAkumulasi} />
-                            <p className="text-xs text-muted-foreground mt-1 truncate" title={asesorTeoriUtama}>
-                              {sisaAsesorTeori > 0
-                              ? `${asesorTeoriUtama}, +${sisaAsesorTeori} l.`
-                              : asesorTeoriUtama
-                              }
-                            </p>
                           </TableCell>
-                          <TableCell>
+                          <TableCell className="text-center">
                             <StatusBadge status={item.hasilAkhir.hasilPraktikum} />
-                            <p className="text-xs text-muted-foreground mt-1 truncate" title={item.hasilAkhir.asesorPraktikum}>
-                              {item.hasilAkhir.asesorPraktikum || 'N/A'}
-                            </p>
                           </TableCell>
-                          <TableCell>
+                          <TableCell className="text-center">
                             <StatusBadge status={item.hasilAkhir.hasilUnjukDiri} />
-                            <p className="text-xs text-muted-foreground mt-1 truncate" title={item.hasilAkhir.asesorUnjukDiri}>
-                              {item.hasilAkhir.asesorUnjukDiri || 'N/A'}
-                            </p>
                           </TableCell>
-
                           <TableCell>
                             <StatusBadge status={item.hasilAkhir.statusAkhir} />
                           </TableCell>
@@ -433,4 +429,4 @@ export default function AdminResultsPage() {
       
     </MainLayout>
   )
-}   
+}

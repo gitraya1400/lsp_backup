@@ -38,6 +38,8 @@ function Calendar({
       formatters={{
         formatMonthDropdown: (date) =>
           date.toLocaleString('default', { month: 'short' }),
+        formatWeekdayName: (date) =>
+          date.toLocaleString('id-ID', { weekday: 'short' }),
         ...formatters,
       }}
       classNames={{
@@ -189,10 +191,7 @@ function CalendarDayButton({
     <Button
       ref={ref}
       variant="ghost"
-      size="icon"
-      // --- INI PERBAIKANNYA ---
       data-day={day.date.toLocaleDateString('en-US')}
-      // --- BATAS PERBAIKAN ---
       data-selected-single={
         modifiers.selected &&
         !modifiers.range_start &&
@@ -203,7 +202,18 @@ function CalendarDayButton({
       data-range-end={modifiers.range_end}
       data-range-middle={modifiers.range_middle}
       className={cn(
-        'data-[selected-single=true]:bg-primary data-[selected-single=true]:text-primary-foreground data-[range-middle=true]:bg-accent data-[range-middle=true]:text-accent-foreground data-[range-start=true]:bg-primary data-[range-start=true]:text-primary-foreground data-[range-end=true]:bg-primary data-[range-end=true]:text-primary-foreground group-data-[focused=true]/day:border-ring group-data-[focused=true]/day:ring-ring/50 dark:hover:text-accent-foreground flex min-h-28 size-auto w-full min-w-(--cell-size) flex-col gap-1 leading-none font-normal group-data-[focused=true]/day:relative group-data-[focused=true]/day:z-10 group-data-[focused=true]/day:ring-[3px] data-[range-end=true]:rounded-md data-[range-end=true]:rounded-r-md data-[range-middle=true]:rounded-none data-[range-start=true]:rounded-md data-[range-start=true]:rounded-l-md [&>span]:text-xs [&>span]:opacity-70',
+        // fill the whole day cell, keep box-sizing and prevent children from forcing height
+        'p-0 m-0 box-border w-full h-full relative overflow-hidden flex flex-col items-center justify-start pt-2',
+        // visual styles for selected / range states
+        'data-[selected-single=true]:bg-gray-400 data-[selected-single=true]:text-gray-900 data-[selected-single=true]:rounded-md',
+        'data-[range-middle=true]:bg-accent data-[range-middle=true]:text-accent-foreground',
+        'data-[range-start=true]:bg-gray-300 data-[range-start=true]:text-gray-900 data-[range-end=true]:bg-gray-300 data-[range-end=true]:text-gray-900',
+        'group-data-[focused=true]/day:relative group-data-[focused=true]/day:z-10 group-data-[focused=true]/day:ring-[3px] flex-col gap-1 leading-none font-normal',
+        // ensure event badges (rendered by CustomDayButton) are absolutely positioned and small so they don't resize the box
+        '[&_>.event-tag-container]:relative [&_>.event-tag-container]:flex [&_>.event-tag-container]:flex-col [&_>.event-tag-container]:items-center [&_>.event-tag-container]:gap-1 [&_>.event-tag-container]:pointer-events-none [&_>.event-tag-container]:max-w-[90%] [&_>.event-tag-container]:overflow-hidden [&_>.event-tag-container]:mt-1',
+        // make individual tags small / truncated
+        '[&_>.event-tag-container>.event-tag]:text-xs [&_>.event-tag-container>.event-tag]:px-2 [&_>.event-tag-container>.event-tag]:py-1 [&_>.event-tag-container>.event-tag]:rounded-full [&_>.event-tag-container>.event-tag]:whitespace-nowrap [&_>.event-tag-container>.event-tag]:truncate',
+        // remove any forced min sizes that caused overflow (was min-h-28 / min-w)
         defaultClassNames.day,
         className,
       )}

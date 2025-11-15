@@ -1,3 +1,5 @@
+// frontend-lms-v3-master/app/asesor/grading/[penugasanId]/page.jsx
+
 "use client";
 
 import React, { useState, useEffect } from "react";
@@ -10,11 +12,20 @@ import { Button } from "@/components/ui/button";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Label } from "@/components/ui/label";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
+import { 
+  AlertDialog, 
+  AlertDialogAction, 
+  AlertDialogContent, 
+  AlertDialogDescription, 
+  AlertDialogFooter, 
+  AlertDialogHeader, 
+  AlertDialogTitle 
+} from "@/components/ui/alert-dialog"; // <-- 1. IMPORT ALERT DIALOG
 import { mockSubmitNilai, mockGetPenugasanDetail } from "@/lib/api-mock"; 
 import { Skeleton } from "@/components/ui/skeleton";
-import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"; // <-- 1. IMPORT ALERT
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"; 
 import { AlertCircle, CheckCircle2 } from "lucide-react";
-import { cn } from "@/lib/utils"; // <-- 2. IMPORT 'cn' UNTUK CLASS GABUNGAN
+import { cn } from "@/lib/utils"; 
 
 export default function GradingPage() {
   const params = useParams();
@@ -22,11 +33,11 @@ export default function GradingPage() {
   const penugasanId = params.penugasanId;
 
   const [penugasan, setPenugasan] = useState(null);
-  const [status, setStatus] = useState("BELUM_KOMPETEN"); 
-  // feedback state sudah dihapus di permintaan sebelumnya
+  const [status, setStatus] = useState("BELUM KOMPETEN"); 
   const [loading, setLoading] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showConfirm, setShowConfirm] = useState(false);
+  const [showSuccessDialog, setShowSuccessDialog] = useState(false); // <-- 2. STATE BARU
 
   useEffect(() => {
     if (penugasanId) {
@@ -34,8 +45,6 @@ export default function GradingPage() {
       mockGetPenugasanDetail(penugasanId)
         .then((data) => {
           setPenugasan(data);
-          // 3. SET STATE AWAL BERDASARKAN DATA YANG DIAMBIL
-          // Jika sudah dinilai, set 'status' ke nilai yang tersimpan
           if (data.statusPenilaian === "SELESAI") {
             setStatus(data.nilaiKompetensi); 
           }
@@ -55,12 +64,15 @@ export default function GradingPage() {
     UNJUK_DIRI: "Penilaian dilakukan offline. Asesi hadir dan mempresentasikan hasil dengan cukup baik.",
   };
 
+  // --- 3. FUNGSI HANDLESUBMIT DIPERBARUI ---
   const handleSubmit = async () => {
     try {
       setIsSubmitting(true);
       await mockSubmitNilai(penugasanId, null, status, ""); // feedback dikirim sbg string kosong
-      alert("Penilaian berhasil disimpan");
-      router.push("/asesor/dashboard");
+      
+      setShowConfirm(false); // Tutup dialog konfirmasi
+      setShowSuccessDialog(true); // Tampilkan dialog sukses
+      
     } catch (error) {
       console.error("Error submitting grading:", error);
       alert("Gagal menyimpan penilaian");
@@ -80,7 +92,6 @@ export default function GradingPage() {
     );
   }
   
-  // 4. BUAT VARIABEL UNTUK MENGECEK STATUS SELESAI
   const isSelesai = penugasan.statusPenilaian === "SELESAI";
 
   return (
@@ -158,7 +169,6 @@ export default function GradingPage() {
           </CardHeader>
           <CardContent className="space-y-6">
           
-            {/* 5. TAMPILKAN ALERT JIKA SUDAH SELESAI DINILAI */}
             {isSelesai && (
               <Alert className="bg-green-50 border-green-200">
                 <CheckCircle2 className="h-4 w-4 text-green-700" />
@@ -175,7 +185,6 @@ export default function GradingPage() {
                 Status Kompetensi *
               </label>
               
-              {/* 6. TAMBAHKAN 'disabled' PADA RADIO GROUP */}
               <RadioGroup 
                 value={status} 
                 onValueChange={(value) => setStatus(value)} 
@@ -189,7 +198,6 @@ export default function GradingPage() {
                   <RadioGroupItem value="KOMPETEN" id="kompeten" disabled={isSelesai} />
                   <Label htmlFor="kompeten" className={cn("font-normal flex-1", isSelesai ? "cursor-not-allowed" : "cursor-pointer")}>
                     <span className="flex items-center gap-2">
-                      <CheckCircle2 className="w-5 h-5 text-green-600" />
                       Kompeten
                     </span>
                   </Label>
@@ -197,12 +205,11 @@ export default function GradingPage() {
                 <div className={cn(
                   "flex items-center space-x-2 p-4 border rounded-lg", 
                   isSelesai && "opacity-70 cursor-not-allowed",
-                  status === "BELUM_KOMPETEN" && "bg-red-50 border-red-300"
+                  status === "BELUM KOMPETEN" && "bg-red-50 border-red-300"
                 )}>
-                  <RadioGroupItem value="BELUM_KOMPETEN" id="belum-kompeten" disabled={isSelesai} />
+                  <RadioGroupItem value="BELUM KOMPETEN" id="belum-kompeten" disabled={isSelesai} />
                   <Label htmlFor="belum-kompeten" className={cn("font-normal flex-1", isSelesai ? "cursor-not-allowed" : "cursor-pointer")}>
                     <span className="flex items-center gap-2">
-                      <AlertCircle className="w-5 h-5 text-red-600" />
                       Belum Kompeten
                     </span>
                   </Label>
@@ -213,11 +220,9 @@ export default function GradingPage() {
             {/* Actions */}
             <div className="flex gap-3 pt-4 border-t">
               <Button variant="outline" onClick={() => router.back()}>
-                {/* 7. UBAH TEKS TOMBOL JIKA SELESAI */}
                 {isSelesai ? "Kembali" : "Batal"}
               </Button>
               
-              {/* 8. SEMBUNYIKAN TOMBOL SIMPAN JIKA SELESAI */}
               {!isSelesai && (
                 <Button onClick={() => setShowConfirm(true)}>
                   Simpan Penilaian
@@ -228,13 +233,13 @@ export default function GradingPage() {
         </Card>
       </div>
 
-      {/* 9. DIALOG KONFIRMASI (TETAP ADA) */}
+      {/* Dialog Konfirmasi */}
       <Dialog open={showConfirm} onOpenChange={setShowConfirm}>
         <DialogContent>
           <DialogHeader>
             <DialogTitle>Konfirmasi Penilaian</DialogTitle>
             <DialogDescription>
-              Anda akan memberikan status <strong>{status}</strong>. Penilaian ini final dan tidak dapat diubah lagi. Lanjutkan?
+              Anda akan memberikan status <strong>{status}</strong>. Penilaian yang disimpan tidak dapat diubah lagi. Lanjutkan?
             </DialogDescription>
           </DialogHeader>
           <DialogFooter>
@@ -247,6 +252,27 @@ export default function GradingPage() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+      
+      {/* --- 4. DIALOG SUKSES BARU --- */}
+      <AlertDialog open={showSuccessDialog} onOpenChange={setShowSuccessDialog}>
+        <AlertDialogContent className="sm:max-w-md">
+          <AlertDialogHeader>
+            <AlertDialogTitle>Sukses</AlertDialogTitle>
+            <AlertDialogDescription>
+              Penilaian berhasil disimpan.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogAction onClick={() => {
+              setShowSuccessDialog(false);
+              router.back(); // Pindah ke halaman sebelumnya
+            }}>
+              Lanjutkan
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+      
     </MainLayout>
   );
 }
