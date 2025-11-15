@@ -354,40 +354,61 @@ export default function AssignmentsPage() {
       const newAsesorNama = asesorListMap.get(asesorId) || "Asesor Baru";
 
       let firstConflictAsesiId = null;
-      let firstConflictAsesiNama = "";
-      let conflictingUnitsList = [];
-      let conflictingAsesorNama = "";
+let firstConflictAsesiNama = "";
+let conflictsByAsesor = {}; // { asesorId: { asesorNama: "...", units: [...] } }
 
-      let firstClassAsesorId = null;
-      let isMixedAssignment = false;
+let firstClassAsesorId = null;
+let isMixedAssignment = false;
+let totalAssignedAsesiCount = 0;
 
-      for (const asesi of asesiInClass) {
-        for (const unit of unitsToAssign) {
-          const key = `${asesi.id}-${unit.id}`;
-          const currentAsesorId = teoriAssignments[key];
+for (const asesi of asesiInClass) {
+  let hasAnyAssignment = false;
+  
+  for (const unit of unitsToAssign) {
+    const key = `${asesi.id}-${unit.id}`;
+    const currentAsesorId = teoriAssignments[key];
 
-          if (currentAsesorId) {
-            if (firstClassAsesorId === null) {
-              firstClassAsesorId = currentAsesorId;
-            } else if (currentAsesorId !== firstClassAsesorId) {
-              isMixedAssignment = true;
-            }
+    if (currentAsesorId) {
+      hasAnyAssignment = true;
+      
+      if (firstClassAsesorId === null) {
+        firstClassAsesorId = currentAsesorId;
+      } else if (currentAsesorId !== firstClassAsesorId) {
+        isMixedAssignment = true;
+      }
 
-            if (currentAsesorId !== asesorId) {
-              const currentAsesorNama = asesorListMap.get(currentAsesorId) || "Asesor Lain";
-              
-              if (firstConflictAsesiId === null) {
-                firstConflictAsesiId = asesi.id;
-                firstConflictAsesiNama = asesi.nama;
-                conflictingAsesorNama = currentAsesorNama;
-                conflictingUnitsList.push(`Unit ${unit.nomorUnit}: ${unit.judul}`);
-              } else if (firstConflictAsesiId === asesi.id && currentAsesorNama === conflictingAsesorNama) {
-                conflictingUnitsList.push(`Unit ${unit.nomorUnit}: ${unit.judul}`);
-              }
-            }
-          }
+      if (currentAsesorId !== asesorId) {
+        const currentAsesorNama = asesorListMap.get(currentAsesorId) || "Asesor Lain";
+        
+        if (firstConflictAsesiId === null) {
+          firstConflictAsesiId = asesi.id;
+          firstConflictAsesiNama = asesi.nama;
+        }
+        
+        // Kumpulkan semua konflik berdasarkan asesor
+        if (!conflictsByAsesor[currentAsesorId]) {
+          conflictsByAsesor[currentAsesorId] = {
+            asesorNama: currentAsesorNama,
+            units: []
+          };
+        }
+        
+        const unitText = `Unit ${unit.nomorUnit}: ${unit.judul}`;
+        if (!conflictsByAsesor[currentAsesorId].units.includes(unitText)) {
+          conflictsByAsesor[currentAsesorId].units.push(unitText);
         }
       }
+    }
+  }
+  
+  if (hasAnyAssignment) {
+    totalAssignedAsesiCount++;
+  }
+}
+
+if (totalAssignedAsesiCount > 0 && totalAssignedAsesiCount < asesiInClass.length) {
+  isMixedAssignment = true;
+}
 
       const pendingAction = () => executeBulkAssign(kelas, asesorId, setAssignmentsFunc, tipe);
 
@@ -397,27 +418,73 @@ export default function AssignmentsPage() {
       }
 
       if (isMixedAssignment) {
-        const unitText = formatUnitList(conflictingUnitsList);
-        const warning = `${unitText} pada asesi "${firstConflictAsesiNama}" sudah terisi oleh ${conflictingAsesorNama}. Apakah Anda yakin ingin menggantinya dengan ${newAsesorNama}? (Perubahan ini akan berlaku untuk semua asesi di kelas ini).`;
-        setOverlapWarning(warning);
-        setPendingBulkAssign({ action: pendingAction });
-        setIsOverlapDialogOpen(true);
-      } else {
-        if (firstClassAsesorId === asesorId) {
-          pendingAction();
-          return;
-        }
+  // Buat pesan untuk setiap asesor yang berbeda
+  const conflictMessages = Object.values(conflictsByAsesor).map((conflict, index) => {
+    const unitText = formatUnitList(conflict.units);
+    return (
+      <span key={index}>
+        {unitText} sudah terisi oleh <strong>{conflict.asesorNama}</strong>
+      </span>
+    );
+  });
+  
+  // Gabungkan pesan dengan koma dan "dan"
+  const formattedMessages = conflictMessages.reduce((acc, curr, idx) => {
+    if (idx === 0) return [curr];
+    if (idx === conflictMessages.length - 1) {
+      return [...acc, ' dan ', curr];
+    }
+    return [...acc, ', ', curr];
+  }, []);
+  
+  const warning = (
+    <span>
+      {formattedMessages} pada asesi <strong>{firstConflictAsesiNama}</strong>. 
+      Apakah Anda yakin ingin menggantinya dengan <strong>{newAsesorNama}</strong>? 
+      (Perubahan ini akan berlaku untuk semua asesi di kelas <strong>{kelas}</strong>)
+    </span>
+  );
+  
+  setOverlapWarning(warning);
+  setPendingBulkAssign({ action: pendingAction });
+  setIsOverlapDialogOpen(true);
+} else {
+  if (firstClassAsesorId === asesorId) {
+    pendingAction();
+    return;
+  }
 
-        const unitText = formatUnitList(unitsToAssign.map(u => `Unit ${u.nomorUnit}: ${u.judul}`));
-        const oldAsesorNama = asesorListMap.get(firstClassAsesorId) || "Asesor Lain";
-        const warning = `${unitText} di kelas ${kelas} sudah terisi oleh ${oldAsesorNama}. Apakah Anda yakin akan menggantinya dengan ${newAsesorNama}?`;
-        
-        setOverlapWarning(warning);
-        setPendingBulkAssign({ action: pendingAction });
-        setIsOverlapDialogOpen(true);
+  const actuallyAssignedUnits = [];
+  for (const unit of unitsToAssign) {
+    let isUnitAssignedInClass = false;
+    for (const asesi of asesiInClass) {
+      const key = `${asesi.id}-${unit.id}`;
+      if (teoriAssignments[key]) {
+        isUnitAssignedInClass = true;
+        break;
       }
+    }
+    if (isUnitAssignedInClass) {
+      actuallyAssignedUnits.push(`Unit ${unit.nomorUnit}: ${unit.judul}`);
+    }
+  }
+
+  const unitText = formatUnitList(actuallyAssignedUnits);
+  const oldAsesorNama = asesorListMap.get(firstClassAsesorId) || "Asesor Lain";
+  const warning = (
+    <span>
+      {unitText} di kelas <strong>{kelas}</strong> sudah terisi oleh <strong>{oldAsesorNama}</strong>. 
+      Apakah Anda yakin akan menggantinya dengan <strong>{newAsesorNama}</strong>?
+    </span>
+  );
+  
+  setOverlapWarning(warning);
+  setPendingBulkAssign({ action: pendingAction });
+  setIsOverlapDialogOpen(true);
+}
 
     } else {
+      // Untuk Praktikum & Unjuk Diri, tidak ada cek overlap
       executeBulkAssign(kelas, asesorId, setAssignmentsFunc, tipe);
     }
   }
