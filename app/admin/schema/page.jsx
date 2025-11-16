@@ -11,24 +11,55 @@ import { Textarea } from "@/components/ui/textarea";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { 
-  mockGetUnitsForSkema, 
-  mockGetMateriForUnit, 
-  mockGetSoalForUnit,
-  mockGetAllSkema, 
-  mockCreateSkema,
-  mockGetSoalTryoutGabungan,    
-  mockGetSoalPraktikumGabungan 
+
+// --- INI YANG HILANG ---
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+// --- BATAS ---
+
+import {
+  mockGetUnitsForSkema,
+  mockGetMateriForUnit,
+  mockGetSoalForUnit,
+  mockGetAllSkema,
+  mockCreateSkema,
+  mockGetSoalTryoutGabungan,
+  mockGetSoalPraktikumGabungan,
+  
+  // --- TAMBAHKAN SEMUA FUNGSI INI ---
+  mockCreateUnit,
+  mockUpdateUnit,
+  mockDeleteUnit,
+  mockCreateMateri,
+  mockUpdateMateri,
+  mockDeleteMateri,
+  mockCreateSoal,
+  mockUpdateSoal,
+  mockDeleteSoal,
+  mockCreateTryout,
+  mockUpsertPraktikum,
+  mockDeleteSkema // <-- Fungsi Hapus Skema
+  // --- BATAS TAMBAHAN ---
+
 } from "@/lib/api-mock";
+
 import { Skeleton } from "@/components/ui/skeleton";
 // Impor ikon baru untuk upload file
 import { Plus, Edit2, Trash2, BookOpen, FileText, File, UploadCloud, X } from "lucide-react"; 
 import { Spinner } from "@/components/ui/spinner";
 
 // ===============================================================
-// --- KOMPONEN 'SoalList' ---
+// --- KOMPONEN 'SoalList' (DENGAN TOMBOL HAPUS) ---
 // ===============================================================
-const SoalList = ({ soal, loading, onEdit }) => {
+const SoalList = ({ soal, loading, onEdit, onDelete }) => {
   if (loading) return <Skeleton className="h-20 w-full" />;
   if (soal.length === 0) return <AlertDescription>Belum ada soal.</AlertDescription>;
 
@@ -38,9 +69,16 @@ const SoalList = ({ soal, loading, onEdit }) => {
         <div key={s.id} className="p-3 border rounded-lg">
           <div className="flex items-center justify-between">
             <span className={`px-2 py-0.5 rounded text-xs font-medium ${s.tipeSoal === "TRYOUT" ? "bg-yellow-100 text-yellow-800" : "bg-indigo-100 text-indigo-800"}`}>{s.tipeSoal}</span>
-            <Button variant="ghost" size="icon" className="h-7 w-7 text-gray-500 hover:text-blue-600" onClick={() => onEdit(s)}>
-              <Edit2 className="w-4 h-4" />
-            </Button>
+            {/* --- PERBAIKAN TOMBOL HAPUS --- */}
+            <div className="flex items-center">
+              <Button variant="ghost" size="icon" className="h-7 w-7 text-gray-500 hover:text-blue-600" onClick={() => onEdit(s)}>
+                <Edit2 className="w-4 h-4" />
+              </Button>
+              <Button variant="ghost" size="icon" className="h-7 w-7 text-gray-500 hover:text-red-600" onClick={() => onDelete(s)}>
+                <Trash2 className="w-4 h-4" />
+              </Button>
+            </div>
+            {/* --- BATAS PERBAIKAN --- */}
           </div>
           <p className="font-medium text-sm my-2">{s.teks}</p>
           <span className="text-xs text-gray-500">Tipe Jawaban: {s.tipeJawaban}</span>
@@ -69,11 +107,8 @@ const SkemaContentManager = ({
   const [loadingUnits, setLoadingUnits] = useState(true);
   const [loadingContent, setLoadingContent] = useState(false);
 
-<<<<<<< Updated upstream
-=======
   const [isSavingUnit, setIsSavingUnit] = useState(false);
 
->>>>>>> Stashed changes
   const [isUnitDialogOpen, setIsUnitDialogOpen] = useState(false);
   const [isMateriDialogOpen, setIsMateriDialogOpen] = useState(false);
   const [isSoalDialogOpen, setIsSoalDialogOpen] = useState(false);
@@ -82,10 +117,7 @@ const SkemaContentManager = ({
   const [deleteMateriTarget, setDeleteMateriTarget] = useState(null);
   const [deleteSoalTarget, setDeleteSoalTarget] = useState(null);
 
-  const [unitForm, setUnitForm] = useState({ id: null, nomorUnit: "", judul: "", deskripsi: "", durasiTeori: 15 });
-<<<<<<< Updated upstream
-  const [materiForm, setMateriForm] = useState({ id: null, judul: "", jenis: "VIDEO", urlKonten: "" });
-=======
+  const [unitForm, setUnitForm] = useState({ id: null, nomorUnit: "", kodeUnit: "", judul: "", deskripsi: "", durasiTeori: 15 });
   const [materiForm, setMateriForm] = useState({
     id: null,
     judul: "",
@@ -93,7 +125,6 @@ const SkemaContentManager = ({
     urlKonten: "",
     file: null
   });
->>>>>>> Stashed changes
   
   const [soalForm, setSoalForm] = useState({
     id: null, teks: "", tipeSoal: "UJIAN_TEORI", tipeJawaban: "ESAI",
@@ -116,11 +147,11 @@ const SkemaContentManager = ({
       setUnits(unitsData || []); 
 
       const [tryoutData, praktikumData] = await Promise.all([
-      mockGetSoalTryoutGabungan(skemaId), 
-      mockGetSoalPraktikumGabungan(skemaId), 
+        mockGetSoalTryoutGabungan(skemaId), 
+        mockGetSoalPraktikumGabungan(skemaId), 
       ]);
       setSoalTryout(tryoutData || []); 
-      setSoalPraktikum(praktikumData ? [praktikumData] : []);
+      setSoalPraktikum(Array.isArray(praktikumData) ? praktikumData : (praktikumData ? [praktikumData] : [])); // Pastikan array
       if (unitsData && unitsData.length > 0) {
         await selectUnit(unitsData[0]);
       } else {
@@ -195,19 +226,11 @@ const SkemaContentManager = ({
       }));
   };
 
-<<<<<<< Updated upstream
-
-  const handleSaveUnit = () => { alert("CRUD Unit belum diimplementasikan"); setIsUnitDialogOpen(false); };
-  const handleSaveMateri = () => { alert("CRUD Materi belum diimplementasikan"); setIsMateriDialogOpen(false); };
-  const handleSaveSoal = () => { alert("CRUD Soal belum diimplementasikan"); setIsSoalDialogOpen(false); };
-=======
-  // --- PERUBAHAN: onSubmit handler ditambahkan (e) ---
   const handleSaveUnit = async (e) => {
-    e.preventDefault(); // Mencegah reload halaman
+    e.preventDefault(); 
     if (isSavingUnit) return;
     try {
       setIsSavingUnit(true);
-      // Validasi JS untuk 'required' sudah dihapus, ditangani HTML5
       
       const payload = {
         nomorUnit: Number(unitForm.nomorUnit) || undefined,
@@ -231,7 +254,7 @@ const SkemaContentManager = ({
       }
 
       setIsUnitDialogOpen(false);
-      setUnitForm({ id: null, nomorUnit: "", judul: "", deskripsi: "", durasiTeori: 15 });
+      setUnitForm({ id: null, nomorUnit: "", kodeUnit: "", judul: "", deskripsi: "", durasiTeori: 15 });
     } catch (err) {
       console.error("Gagal menyimpan unit:", err);
       setInfoDialog({ open: true, title: "Gagal Menyimpan", message: `Gagal menyimpan unit: ${err.message}` });
@@ -265,12 +288,9 @@ const SkemaContentManager = ({
     }
   };
 
-  // --- PERUBAHAN: onSubmit handler ditambahkan (e) ---
   const handleSaveMateri = async (e) => {
-    e.preventDefault(); // Mencegah reload halaman
+    e.preventDefault(); 
     
-    // Validasi JS untuk 'judul' sudah dihapus (ditangani HTML 'required')
-    // Validasi kondisional tetap dipertahankan
     if (materiForm.jenis === "PDF" && !materiForm.file && !materiForm.urlKonten) {
       setInfoDialog({ open: true, title: "Validasi Gagal", message: "Silakan pilih file PDF untuk materi." });
       return;
@@ -324,12 +344,9 @@ const SkemaContentManager = ({
     }
   };
 
-  // --- PERUBAHAN: onSubmit handler ditambahkan (e) ---
   const handleSaveSoal = async (e) => {
-     e.preventDefault(); // Mencegah reload halaman
+     e.preventDefault(); 
      
-     // Validasi JS untuk 'teks' sudah dihapus (ditangani HTML 'required')
-     // Validasi kondisional tetap dipertahankan
      try {
        if (soalForm.tipeSoal === "UJIAN_TEORI") {
          if (!selectedUnit) {
@@ -354,7 +371,7 @@ const SkemaContentManager = ({
        } else if (soalForm.tipeSoal === "UJIAN_PRAKTIKUM") {
          await mockUpsertPraktikum(skemaId, soalForm);
          const praktikumData = await mockGetSoalPraktikumGabungan(skemaId);
-         setSoalPraktikum(praktikumData || []);
+         setSoalPraktikum(Array.isArray(praktikumData) ? praktikumData : (praktikumData ? [praktikumData] : []));
        }
 
        setIsSoalDialogOpen(false);
@@ -414,7 +431,7 @@ const SkemaContentManager = ({
   const loadPraktikumSoal = async () => {
     try {
       const data = await mockGetSoalPraktikumGabungan(skemaId);
-      setSoalPraktikum(data || []);
+      setSoalPraktikum(Array.isArray(data) ? data : (data ? [data] : []));
     } catch (err) {
       console.error("Gagal load praktikum:", err);
       setSoalPraktikum([]);
@@ -426,7 +443,6 @@ const SkemaContentManager = ({
       loadPraktikumSoal();
     }
   }, [skemaId]);
->>>>>>> Stashed changes
 
   return (
     <React.Fragment> 
@@ -438,7 +454,7 @@ const SkemaContentManager = ({
                 <CardHeader className="flex flex-row items-center justify-between pb-4">
                   <CardTitle className="text-lg">Unit Kompetensi</CardTitle>
                   <Button size="sm" onClick={() => {
-                    setUnitForm({ id: null, nomorUnit: "", judul: "", deskripsi: "", durasiTeori: 15 }); // Reset form
+                    setUnitForm({ id: null, nomorUnit: "", kodeUnit: "", judul: "", deskripsi: "", durasiTeori: 15 }); // Reset form
                     setIsUnitDialogOpen(true);
                   }}>
                     <Plus className="w-4 h-4 mr-2" /> Tambah Unit
@@ -463,9 +479,16 @@ const SkemaContentManager = ({
                             <span className="font-medium text-sm text-gray-800">
                               {unit.nomorUnit}. {unit.judul}
                             </span>
-                            <Button variant="ghost" size="icon" className="h-7 w-7 text-gray-500 hover:text-blue-600" onClick={(e) => { e.stopPropagation(); setUnitForm(unit); setIsUnitDialogOpen(true); }}>
-                              <Edit2 className="w-4 h-4" />
-                            </Button>
+                            {/* --- PERBAIKAN TOMBOL HAPUS --- */}
+                            <div className="flex items-center -mr-2">
+                              <Button variant="ghost" size="icon" className="h-7 w-7 text-gray-500 hover:text-blue-600" onClick={(e) => { e.stopPropagation(); setUnitForm(unit); setIsUnitDialogOpen(true); }}>
+                                <Edit2 className="w-4 h-4" />
+                              </Button>
+                              <Button variant="ghost" size="icon" className="h-7 w-7 text-gray-500 hover:text-red-600" onClick={(e) => { e.stopPropagation(); handleDeleteUnit(unit); }}>
+                                <Trash2 className="w-4 h-4" />
+                              </Button>
+                            </div>
+                            {/* --- BATAS PERBAIKAN --- */}
                           </div>
                         </div>
                       ))}
@@ -512,9 +535,16 @@ const SkemaContentManager = ({
                                   <p className="text-xs text-muted-foreground">{m.urlKonten}</p>
                                 </div>
                               </div>
-                              <Button variant="ghost" size="icon" className="h-7 w-7 text-gray-500 hover:text-blue-600" onClick={() => { setMateriForm(m); setIsMateriDialogOpen(true); }}>
-                                <Edit2 className="w-4 h-4" />
-                              </Button>
+                              {/* --- PERBAIKAN TOMBOL HAPUS --- */}
+                              <div className="flex items-center -mr-2">
+                                <Button variant="ghost" size="icon" className="h-7 w-7 text-gray-500 hover:text-blue-600" onClick={() => { setMateriForm(m); setIsMateriDialogOpen(true); }}>
+                                  <Edit2 className="w-4 h-4" />
+                                </Button>
+                                <Button variant="ghost" size="icon" className="h-7 w-7 text-gray-500 hover:text-red-600" onClick={() => handleDeleteMateri(m)}>
+                                  <Trash2 className="w-4 h-4" />
+                                </Button>
+                              </div>
+                              {/* --- BATAS PERBAIKAN --- */}
                             </div>
                           ))
                         )}
@@ -530,7 +560,13 @@ const SkemaContentManager = ({
                         </Button>
                       </CardHeader>
                       <CardContent>
-                        <SoalList soal={soalTeori} loading={loadingContent} onEdit={(s) => handleOpenSoalModal("UJIAN_TEORI", s)} />
+                        {/* --- PERBAIKAN: Teruskan onDelete --- */}
+                        <SoalList 
+                          soal={soalTeori} 
+                          loading={loadingContent} 
+                          onEdit={(s) => handleOpenSoalModal("UJIAN_TEORI", s)} 
+                          onDelete={handleDeleteSoal}
+                        />
                       </CardContent>
                     </Card>
                   </TabsContent>
@@ -540,7 +576,7 @@ const SkemaContentManager = ({
                       <CardContent className="text-center text-gray-500">
                         <p>Skema ini belum memiliki unit.</p>
                         <Button size="sm" className="mt-4" onClick={() => {
-                          setUnitForm({ id: null, nomorUnit: "", judul: "", deskripsi: "", durasiTeori: 15 }); // Reset form
+                          setUnitForm({ id: null, nomorUnit: "", kodeUnit: "", judul: "", deskripsi: "", durasiTeori: 15 }); // Reset form
                           setIsUnitDialogOpen(true);
                         }}>
                           <Plus className="w-4 h-4 mr-2" /> Tambah Unit Pertama
@@ -561,7 +597,13 @@ const SkemaContentManager = ({
               </Button>
             </CardHeader>
             <CardContent>
-              <SoalList soal={soalTryout} loading={loadingUnits} onEdit={(s) => handleOpenSoalModal("TRYOUT", s)} />
+              {/* --- PERBAIKAN: Teruskan onDelete --- */}
+              <SoalList 
+                soal={soalTryout} 
+                loading={loadingUnits} 
+                onEdit={(s) => handleOpenSoalModal("TRYOUT", s)} 
+                onDelete={handleDeleteSoal}
+              />
             </CardContent>
           </Card>
         </TabsContent>
@@ -575,13 +617,19 @@ const SkemaContentManager = ({
               </Button>
             </CardHeader>
             <CardContent>
-              <SoalList soal={soalPraktikum} loading={loadingUnits} onEdit={(s) => handleOpenSoalModal("UJIAN_PRAKTIKUM", s)} />
+              {/* --- PERBAIKAN: Teruskan onDelete --- */}
+              <SoalList 
+                soal={soalPraktikum} 
+                loading={loadingUnits} 
+                onEdit={(s) => handleOpenSoalModal("UJIAN_PRAKTIKUM", s)} 
+                onDelete={handleDeleteSoal}
+              />
             </CardContent>
           </Card>
         </TabsContent>
       </Tabs>
       
-      {/* --- PERUBAHAN: Modal Unit dibungkus <form> --- */}
+      {/* --- Modal Unit --- */}
       <Dialog open={isUnitDialogOpen} onOpenChange={setIsUnitDialogOpen}>
         <DialogContent>
           <form id="unit-form" onSubmit={handleSaveUnit}>
@@ -592,6 +640,9 @@ const SkemaContentManager = ({
               <Label htmlFor="unit-nomor">Unit ke *</Label>
               <Input id="unit-nomor" placeholder="Nomor Unit" value={unitForm.nomorUnit} onChange={(e) => setUnitForm({ ...unitForm, nomorUnit: e.target.value })} required />
               
+              <Label htmlFor="unit-kode">Kode Unit</Label>
+              <Input id="unit-kode" placeholder="Kode Unit (Misal: J.62DMI...)" value={unitForm.kodeUnit} onChange={(e) => setUnitForm({ ...unitForm, kodeUnit: e.target.value })} />
+
               <Label htmlFor="unit-judul">Judul Unit *</Label>
               <Input id="unit-judul" placeholder="Judul Unit" value={unitForm.judul} onChange={(e) => setUnitForm({ ...unitForm, judul: e.target.value })} required />
               
@@ -611,33 +662,9 @@ const SkemaContentManager = ({
         </DialogContent>
       </Dialog>
 
-      {/* --- PERUBAHAN: Modal Materi dibungkus <form> --- */}
+      {/* --- Modal Materi --- */}
       <Dialog open={isMateriDialogOpen} onOpenChange={setIsMateriDialogOpen}>
         <DialogContent>
-<<<<<<< Updated upstream
-          <DialogHeader>
-            <DialogTitle>{materiForm.id ? "Edit Materi" : "Tambah Materi Baru"}</DialogTitle>
-            <DialogDescription>Materi ini akan muncul di unit: {selectedUnit?.judul}</DialogDescription>
-          </DialogHeader>
-          <div className="grid gap-4 py-4">
-            <Input placeholder="Judul Materi" value={materiForm.judul} onChange={(e) => setMateriForm({ ...materiForm, judul: e.target.value })} />
-            <Select value={materiForm.jenis} onValueChange={(value) => setMateriForm({ ...materiForm, jenis: value })}>
-              <SelectTrigger><SelectValue /></SelectTrigger>
-              <SelectContent>
-                <SelectItem value="VIDEO">Video (Youtube, etc)</SelectItem>
-                <SelectItem value="PDF">Dokumen PDF</SelectItem>
-                <SelectItem value="LINK">Artikel/Link Eksternal</SelectItem>
-              </SelectContent>
-            </Select>
-            <Input placeholder="URL Konten (misal: https://youtube.com/...)" value={materiForm.urlKonten} onChange={(e) => setMateriForm({ ...materiForm, urlKonten: e.target.value })} />
-          </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setIsMateriDialogOpen(false)}>Batal</Button>
-            <Button onClick={handleSaveMateri}>Simpan Materi</Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-=======
           <form id="materi-form" onSubmit={handleSaveMateri}>
             <DialogHeader>
               <DialogTitle>{materiForm.id ? "Edit Materi" : "Tambah Materi Baru"}</DialogTitle>
@@ -688,7 +715,6 @@ const SkemaContentManager = ({
                   />
                 </div>
               )}
->>>>>>> Stashed changes
 
               {materiForm.jenis === "PDF" && (
                 <div>
@@ -699,7 +725,6 @@ const SkemaContentManager = ({
                     accept=".pdf" 
                     className="mt-2" 
                     onChange={handleMateriFileChange}
-                    // Hanya wajib jika BUKAN edit DAN belum ada file
                     required={!materiForm.id && !materiForm.file} 
                   />
                   {materiForm.file && (
@@ -709,6 +734,7 @@ const SkemaContentManager = ({
                         <p className="text-xs text-muted-foreground">{materiForm.file.size}</p>
                       </div>
                       <Button 
+                        type="button" // Pastikan type="button" agar tidak submit form
                         size="icon" 
                         variant="ghost" 
                         onClick={() => setMateriForm(prev => ({ ...prev, file: null, urlKonten: "" }))}
@@ -728,7 +754,7 @@ const SkemaContentManager = ({
         </DialogContent>
       </Dialog>
 
-      {/* --- PERUBAHAN: Modal Soal dibungkus <form> --- */}
+      {/* --- Modal Soal --- */}
       <Dialog open={isSoalDialogOpen} onOpenChange={setIsSoalDialogOpen}>
         <DialogContent className="max-w-2xl">
           <form id="soal-form" onSubmit={handleSaveSoal}>
@@ -906,8 +932,6 @@ export default function SchemaPage() {
   const [isSkemaDialogOpen, setIsSkemaDialogOpen] = useState(false);
   const [skemaForm, setSkemaForm] = useState({ id: "", judul: "", deskripsi: "" });
 
-<<<<<<< Updated upstream
-=======
   // --- PERUBAHAN: State untuk dialog notifikasi & error ---
   const [infoDialog, setInfoDialog] = useState({ open: false, title: "", message: "" });
   // --- BATAS PERUBAHAN ---
@@ -915,7 +939,6 @@ export default function SchemaPage() {
   const [isDeleteAlertOpen, setIsDeleteAlertOpen] = useState(false);
   const [isDeletingSkema, setIsDeletingSkema] = useState(false);
 
->>>>>>> Stashed changes
   useEffect(() => {
     loadSkemaList();
   }, []);
@@ -958,8 +981,6 @@ export default function SchemaPage() {
     }
   };
 
-<<<<<<< Updated upstream
-=======
   const handleDeleteSkema = async () => {
     if (!activeSkemaTab) return;
     
@@ -987,7 +1008,6 @@ export default function SchemaPage() {
     }
   };
 
->>>>>>> Stashed changes
   return (
     <MainLayout>
       <div className="flex-1 p-6 space-y-6">
@@ -1003,21 +1023,6 @@ export default function SchemaPage() {
           </div>
         ) : (
           <Tabs value={activeSkemaTab} onValueChange={setActiveSkemaTab} className="w-full">
-<<<<<<< Updated upstream
-            <div className="flex items-center justify-between mb-2 flex-wrap gap-2">
-              <TabsList>
-                {skemaList.map((skema) => (
-                  <TabsTrigger key={skema.id} value={skema.id}>
-                    {skema.judul} ({skema.id})
-                  </TabsTrigger>
-                ))}
-              </TabsList>
-              <Button onClick={() => setIsSkemaDialogOpen(true)}>
-                <Plus className="w-4 h-4 mr-2" />
-                Tambah Skema Baru
-              </Button>
-            </div>
-=======
             
             <Card>
               <CardContent className="pt-6 flex flex-col gap-4">
@@ -1061,7 +1066,6 @@ export default function SchemaPage() {
               </CardContent>
             </Card>
 
->>>>>>> Stashed changes
 
             {skemaList.map((skema) => (
               <TabsContent 
@@ -1070,11 +1074,6 @@ export default function SchemaPage() {
                 className="mt-0" 
                 forceMount={activeSkemaTab === skema.id}
               >
-<<<<<<< Updated upstream
-                <SkemaContentManager skemaId={skema.id} />
-              </TabsContent>
-            ))}
-=======
                 <SkemaContentManager 
                   skemaId={skema.id} 
                   activeContentTab={activeContentTab} 
@@ -1109,13 +1108,12 @@ export default function SchemaPage() {
                 </AlertDialogFooter>
               </AlertDialogContent>
             </AlertDialog>
->>>>>>> Stashed changes
           </Tabs>
         )}
 
       </div>
 
-      {/* --- PERUBAHAN: Modal Skema dibungkus <form> --- */}
+      {/* --- Modal Skema --- */}
       <Dialog open={isSkemaDialogOpen} onOpenChange={setIsSkemaDialogOpen}>
         <DialogContent className="sm:max-w-md">
           <form id="skema-form" onSubmit={handleSaveSkema}>
@@ -1173,11 +1171,10 @@ export default function SchemaPage() {
         </DialogContent>
       </Dialog>
       
-      {/* --- PERUBAHAN: Dialog Notifikasi Sederhana --- */}
+      {/* --- Dialog Notifikasi Sederhana --- */}
       <AlertDialog open={infoDialog.open} onOpenChange={() => setInfoDialog({ open: false, title: "", message: "" })}>
         <AlertDialogContent className="sm:max-w-md">
           <AlertDialogHeader>
-            {/* Header dibuat sederhana tanpa ikon */}
             <AlertDialogTitle>{infoDialog.title || "Informasi"}</AlertDialogTitle>
             <AlertDialogDescription>
               {infoDialog.message}
@@ -1190,7 +1187,6 @@ export default function SchemaPage() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
-      {/* --- BATAS PERUBAHAN --- */}
 
     </MainLayout>
   );
