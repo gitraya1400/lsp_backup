@@ -146,7 +146,7 @@ const Penugasan = {
   asesorId: "asesor-1",
   asesiId: "user-123",
   asesiNama: "Nadia Nisrina",
-  asesiKelas: "4SI1",                // <-- [PERBAIKAN 1]: Field ini ada di mock dan dipakai di frontend filter
+  asesiKelas: "4SI1",                
   skemaId: "DS",
   
   tipe: "TEORI", // "TEORI" | "PRAKTIKUM" | "UNJUK_DIRI"
@@ -586,9 +586,7 @@ const StatistikAdmin = {
  * Mock: mockGetUnitsForSkema
  */
 
-/**
- * [PERBAIKAN 2: TAMBAHAN ENDPOINT CRUD UNIT]
- */
+
 
 /**
  * [ADMIN] Membuat Unit Kompetensi Baru
@@ -625,9 +623,7 @@ const StatistikAdmin = {
  * Mock: mockGetMateriForUnit
  */
 
-/**
- * [PERBAIKAN 2: TAMBAHAN ENDPOINT CRUD MATERI]
- */
+
 
 /**
  * [ADMIN] Membuat Materi Baru
@@ -664,9 +660,7 @@ const StatistikAdmin = {
  * Mock: mockGetSoalForUnit
  */
 
-/**
- * [PERBAIKAN 2: TAMBAHAN ENDPOINT CRUD SOAL]
- */
+
 
 /**
  * [ADMIN] Membuat Soal Baru (Teori atau Tryout)
@@ -740,9 +734,7 @@ const StatistikAdmin = {
  * Mock: mockCreateLinimasa
  */
  
-/**
- * [PERBAIKAN 2: TAMBAHAN ENDPOINT UPDATE/DELETE LINIMASA]
- */
+
 
 /**
  * [ADMIN] Update Kegiatan Linimasa
@@ -779,9 +771,7 @@ const StatistikAdmin = {
  * Mock: mockCreateSesiUjianOffline
  */
  
-/**
- * [PERBAIKAN 2: TAMBAHAN ENDPOINT UPDATE/DELETE SESI UJIAN]
- */
+
  
 /**
  * [ADMIN] Update Sesi Ujian Offline

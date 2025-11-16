@@ -34,7 +34,6 @@ import {
 
 const ITEMS_PER_PAGE = 20;
 
-// --- FUNGSI HELPER BARU ---
 const formatUnitList = (unitList) => {
   if (unitList.length === 0) return "";
   if (unitList.length === 1) return `"${unitList[0]}"`;
@@ -45,9 +44,6 @@ const formatUnitList = (unitList) => {
   return `${firstParts.map(u => `"${u}"`).join(', ')} dan "${lastPart}"`;
 }
 
-// ====================================================================
-// Komponen Utama Halaman
-// ====================================================================
 export default function AssignmentsPage() {
   const [skemaId, setSkemaId] = useState("")
   const [tipeUjian, setTipeUjian] = useState("TEORI")
@@ -113,8 +109,7 @@ export default function AssignmentsPage() {
     const filteredAsesor = allAsesor.filter((a) => a.skemaKeahlian && a.skemaKeahlian.includes(skemaId))
     setAsesorList(filteredAsesor)
 
-    // Reset filter saat ganti skema
-    setCurrentPage(1)
+     setCurrentPage(1)
     setFilterKelas("SEMUA") 
     setSelectedBulkClass("")
     setSelectedBulkAsesor("")

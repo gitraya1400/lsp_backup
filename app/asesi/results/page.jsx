@@ -24,7 +24,7 @@ export default function ResultsPage() {
   const loadResults = async () => {
     try {
       setLoading(true)
-      const hasilData = await mockGetHasilAkhir(user.id) // Panggil API baru
+      const hasilData = await mockGetHasilAkhir(user.id) 
       setHasil(hasilData)
     } catch (error) {
       console.error("Error loading results:", error)
@@ -33,7 +33,6 @@ export default function ResultsPage() {
     }
   }
 
-  // Helper component biar rapi
   const StatusBadge = ({ status }) => {
     const isKompeten = status === "KOMPETEN"
     return (
@@ -47,13 +46,11 @@ export default function ResultsPage() {
   return (
     <MainLayout>
       <div className="p-6 space-y-6">
-        {/* Header */}
         <div>
           <h1 className="text-3xl font-bold">Hasil Penilaian</h1>
           <p className="text-muted-foreground mt-1">Lihat hasil ujian dan status kompetensi Anda</p>
         </div>
 
-        {/* Overall Status */}
         {loading ? (
           <Skeleton className="h-32 w-full" />
         ) : (
@@ -77,7 +74,6 @@ export default function ResultsPage() {
                 </div>
               </div>
 
-              {/* --- (BLOK INI TELAH DIREVISI) --- */}
               {hasil?.statusAkhir === "KOMPETEN" && (
                 <div className="mt-4 pt-4 border-t border-green-200">
                   <p className="text-sm text-green-700">
@@ -85,7 +81,6 @@ export default function ResultsPage() {
                   </p>
                 </div>
               )}
-              {/* --- (BATAS REVISI) --- */}
 
               {hasil?.statusAkhir === "BELUM KOMPETEN" && (
                 <div className="mt-4 pt-4 border-t border-red-200">
@@ -98,7 +93,6 @@ export default function ResultsPage() {
           </Card>
         )}
 
-        {/* Detailed Results */}
         <Card>
           <CardHeader>
             <CardTitle>Rincian Penilaian</CardTitle>
