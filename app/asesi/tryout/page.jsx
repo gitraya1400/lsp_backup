@@ -14,7 +14,7 @@ import {
   mockSubmitTryout, 
   mockGetProgressAsesi 
 } from "@/lib/api-mock";
-import { Lock, Play, Loader2, Check, Book, Clock, CheckCircle2, MonitorOff } from "lucide-react";
+import { Lock, Play, Loader2, Check, Book, Clock, CheckCircle2, MonitorOff, AlertCircle } from "lucide-react"; // Added AlertCircle here
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { formatTime } from "@/lib/utils"; 
